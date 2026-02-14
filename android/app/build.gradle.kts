@@ -35,11 +35,6 @@ android {
         }
     }
 
-    python {
-        version = "3.8"
-        buildPython("build.py")
-    }
-
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
