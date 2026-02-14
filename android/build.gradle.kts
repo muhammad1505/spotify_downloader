@@ -17,7 +17,7 @@ allprojects {
     
     afterEvaluate {
         project.plugins.withId("com.chaquo.python") {
-            project.extensions.getByType<com.chaquo.python.PythonExtension>().apply {
+            project.extensions.getByType<com.chaquo.python.ChaquopyExtension>().apply {
                 version = "3.8"
                 buildPython("build.py")
             }
