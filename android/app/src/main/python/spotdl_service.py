@@ -3,7 +3,11 @@ import re
 import os
 import threading
 
-# yt-dlp will be imported at runtime after Chaquopy installs it
+try:
+    import yt_dlp  # pyre-ignore[21]: Installed by Chaquopy at build time
+except ImportError:
+    yt_dlp = None  # pyre-ignore[9]
+
 _download_thread = None
 _cancel_flag = False
 
@@ -72,7 +76,6 @@ def start_download(url, output_dir, quality='320', skip_existing=True,
     _emit('downloading', 0, 'Starting download...', 'info')
 
     try:
-        import yt_dlp
 
         content_type, content_id = _extract_spotify_id(url)
 
@@ -111,14 +114,21 @@ def start_download(url, output_dir, quality='320', skip_existing=True,
             elif d['status'] == 'finished':
                 _emit('converting', 95, 'Converting audio...', 'info')
 
+        postprocessors = [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': audio_quality,
+        }]
+
+        if embed_art:
+            postprocessors.append({
+                'key': 'EmbedThumbnail',
+            })
+
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': audio_quality,
-            }],
+            'postprocessors': postprocessors,
             'progress_hooks': [progress_hook],
             'quiet': True,
             'no_warnings': True,
@@ -126,15 +136,10 @@ def start_download(url, output_dir, quality='320', skip_existing=True,
             'noplaylist': content_type == 'track',
         }
 
-        if embed_art:
-            ydl_opts['postprocessors'].append({
-                'key': 'EmbedThumbnail',
-            })
-
         if skip_existing:
             ydl_opts['download_archive'] = os.path.join(output_dir, '.downloaded')
 
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:  # pyre-ignore[16]
             _emit('downloading', 10, 'Fetching metadata...', 'info')
             ydl.download([search_query])
 
@@ -165,10 +170,9 @@ def cancel_download():
 def get_version():
     """Return yt-dlp version info."""
     try:
-        import yt_dlp
         return json.dumps({
             'status': 'success',
-            'version': f"yt-dlp {yt_dlp.version.__version__}",
+            'version': f"yt-dlp {yt_dlp.version.__version__}",  # pyre-ignore[16]
             'type': 'info'
         })
     except Exception as e:
