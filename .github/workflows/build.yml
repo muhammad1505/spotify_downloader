@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build Release APK
     runs-on: ubuntu-latest
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false -Dkotlin.compiler.execution.strategy=in-process
 
     steps:
       - name: Checkout repository
@@ -56,10 +58,10 @@ jobs:
         run: flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi -v
 
       - name: Build Universal APK
-        run: flutter build apk --release
+        run: flutter build apk --release -v
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
