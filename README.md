@@ -1,74 +1,88 @@
-# 🎵 SpotDL Downloader
+# 🎧 Spotify Downloader Pro (Android)
 
-An Android app to download Spotify tracks, playlists, and albums for offline listening. Built with **Flutter**, **Kotlin**, and **Python (Chaquopy + spotdl)**.
+Full offline Spotify downloader for Android with multi‑queue, analytics, and in‑app preview. Built with **Flutter**, **Kotlin**, and **Python (Chaquopy)** using **yt‑dlp**, **ffmpeg**, and **mutagen**.
 
 ## ✨ Features
 
-- 📥 Download tracks, playlists, and albums from Spotify
+- 📥 Download Spotify tracks/playlists (via yt‑dlp search)
+- 🧵 Multi download queue (pause/resume/cancel)
 - 🎛️ Quality selection (128/192/320 kbps)
-- 📂 Download history with search, filter & sort
-- 🖥️ Real-time terminal log viewer
-- 🔔 Foreground service with progress notifications
-- 🌙 Spotify-themed dark mode UI
-- ⚙️ Configurable settings (output dir, concurrent downloads, etc.)
+- 🧠 Metadata tagging + album art (mutagen)
+- 🎶 Built‑in preview player (just_audio)
+- 📊 Analytics dashboard (sqflite + fl_chart)
+- 🔔 Foreground service notifications
+- 🌙 Premium dark UI with Spotify theme
 
-## 🏗️ Architecture
+## 🧱 Architecture
 
 ```
-Flutter UI ─► PythonBridge ─► MethodChannel ─► Kotlin ─► Chaquopy ─► spotdl/yt-dlp
+Flutter UI
+   ↓
+Queue Manager (Flutter)
+   ↓
+MethodChannel
+   ↓
+Kotlin Bridge + Foreground Service
+   ↓
+Chaquopy (Python 3.10)
+   ↓
+yt-dlp → ffmpeg → mutagen → MP3
 ```
-
-| Layer | Tech |
-|-------|------|
-| UI | Flutter + Provider |
-| Bridge | Kotlin + MethodChannel/EventChannel |
-| Engine | Python 3.12 + spotdl + yt-dlp + FFmpeg |
-| Storage | sqflite + SharedPreferences |
 
 ## 📁 Project Structure
 
 ```
 lib/
 ├── core/            # Theme, constants
-├── models/          # DownloadItem, DownloadOptions, LogEntry
-├── screens/         # Home, Library, Settings, About
-├── services/        # PythonBridge, DownloadService, StorageService, SettingsService
-├── widgets/         # UrlInput, ProgressCard, TerminalLog, etc.
+├── managers/        # Queue + analytics
+├── models/          # DownloadItem, DownloadOptions, DownloadTask
+├── screens/         # Home, Library, Analytics, Settings, About
+├── services/        # PythonService, AudioService, StorageService
+├── widgets/         # UI components
 └── main.dart        # App entry point
 
 android/
 ├── app/src/main/
-│   ├── kotlin/      # MainActivity, DownloadForegroundService
-│   └── python/      # spotdl_service.py
+│   ├── kotlin/      # MainActivity, Foreground service
+│   └── python/      # downloader.py, spotdl_service.py
+
+backend/python/
+└── downloader.py    # Reference engine (same logic as Android)
 ```
 
-## 🚀 Build
+## 🚀 Build & Run
 
 ```bash
-# Debug
-flutter build apk --debug
-
-# Release (split per ABI)
-flutter build apk --release --split-per-abi
-
-# Universal release
-flutter build apk --release
+flutter pub get
+flutter run
 ```
 
-## 📋 Requirements
+Release build:
+```bash
+flutter build apk --release --target-platform=android-arm64,android-x64
+```
+
+## ⚙️ Requirements
 
 - Flutter 3.4+
-- Android SDK 24+ (Android 7.0)
+- Android SDK 24+
 - Java 17
+- Python 3.10 (embedded via Chaquopy)
 
 ## 🔄 CI/CD
 
-Push to `main` to trigger builds. Tag with `v*` for auto-release:
+- `test.yml`: widget + integration tests
+- `build.yml`: release build on tag `v*`
 
 ```bash
 git tag v1.0.0
-git push origin --tags
+git push origin v1.0.0
 ```
+
+## 📝 Notes
+
+- ffmpeg is invoked via `FFMPEG_PATH` (defaults to `ffmpeg`).
+- Spotdl is **not** used on Android because of native dependency conflicts.
 
 ## 📜 License
 

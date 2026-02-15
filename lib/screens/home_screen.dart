@@ -7,8 +7,6 @@ import '../services/download_service.dart';
 import '../managers/queue_manager.dart';
 import '../widgets/url_input.dart';
 import '../widgets/download_options_card.dart';
-import '../widgets/progress_card.dart';
-import '../widgets/terminal_log.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -82,7 +80,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (!_isUrlValid) return;
 
     HapticFeedback.mediumImpact();
-    context.read<DownloadService>().clearLogs();
   }
 
   @override
@@ -260,48 +257,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ],
 
-              // Progress Section
-              if (downloadService.isDownloading ||
-                  downloadService.currentStatus == AppConstants.statusCompleted ||
-                  downloadService.currentStatus == AppConstants.statusError) ...[
-                const SizedBox(height: 16),
-                ProgressCard(
-                  progress: downloadService.progress,
-                  statusMessage: downloadService.statusMessage,
-                  status: downloadService.currentStatus,
-                  onCancel: downloadService.isDownloading
-                      ? () => downloadService.cancelDownload()
-                      : null,
-                ),
-              ],
-
-              // Terminal Log
-              if (downloadService.logs.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Console Output',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: AppTheme.spotifySubtle,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => downloadService.clearLogs(),
-                      icon: const Icon(Icons.clear_all, size: 16),
-                      label: const Text('Clear'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.spotifySubtle,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                TerminalLog(logs: downloadService.logs),
-              ],
               const SizedBox(height: 32),
             ],
           ),

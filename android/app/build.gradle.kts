@@ -54,7 +54,7 @@ android {
 // Chaquopy configuration (top-level block in v17+)
 chaquopy {
     defaultConfig {
-        version = "3.12"
+        version = "3.10"
 
         pip {
             install("yt-dlp")
