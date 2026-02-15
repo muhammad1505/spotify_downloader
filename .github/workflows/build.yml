@@ -60,6 +60,14 @@ jobs:
       - name: Run Flutter tests
         run: flutter test
 
+      - name: Run integration tests (Android emulator)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          script: flutter test integration_test
+
       - name: Build Release APK
         run: flutter build apk --release --target-platform=android-arm64,android-x64 -v
 

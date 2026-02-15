@@ -2,6 +2,8 @@ import json
 import re
 import os
 import threading
+import traceback
+import urllib.request
 
 try:
     import yt_dlp  # pyre-ignore[21]: Installed by Chaquopy at build time
@@ -59,6 +61,20 @@ def _extract_spotify_id(url):
     return None, None
 
 
+def _fetch_spotify_oembed_title(url):
+    """Fetch Spotify oEmbed data to build a better YouTube search query."""
+    try:
+        oembed_url = f"https://open.spotify.com/oembed?url={url}"
+        with urllib.request.urlopen(oembed_url, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        title = data.get("title", "").strip()
+        if title:
+            return title
+    except Exception:
+        return None
+    return None
+
+
 def start_download(url, output_dir, quality='320', skip_existing=True,
                     embed_art=True, normalize=False):
     """
@@ -81,17 +97,20 @@ def start_download(url, output_dir, quality='320', skip_existing=True,
     _emit('downloading', 0, 'Starting download...', 'info')
 
     try:
+        if yt_dlp is None:
+            _emit('error', 0, 'yt-dlp is not available. Check build config.', 'error')
+            return
 
         content_type, content_id = _extract_spotify_id(url)
 
         # For Spotify URLs, we search YouTube with the track info
         # yt-dlp supports ytsearch: prefix for YouTube searches
-        if content_type == 'track':
-            # Use the Spotify URL directly - yt-dlp has some Spotify support
-            # Or search YouTube with the URL as a search query
-            search_query = f"ytsearch:{url}"
-        else:
-            search_query = f"ytsearch:{url}"
+        search_query = f"ytsearch:{url}"
+        _emit('downloading', 3, 'Fetching Spotify metadata...', 'info')
+        title = _fetch_spotify_oembed_title(url)
+        if title:
+            search_query = f"ytsearch:{title}"
+            _emit('downloading', 4, f'Using search query: {title}', 'info')
 
         _emit('downloading', 5, 'Searching for audio...', 'info')
 
@@ -157,6 +176,9 @@ def start_download(url, output_dir, quality='320', skip_existing=True,
             _emit('cancelled', 0, 'Download cancelled by user', 'warning')
         else:
             _emit('error', 0, f'Download failed: {error_msg}', 'error')
+            debug_trace = os.getenv('SPOTDL_DEBUG', '').strip()
+            if debug_trace == '1':
+                _emit('error', 0, traceback.format_exc(), 'error')
 
 
 def cancel_download():
