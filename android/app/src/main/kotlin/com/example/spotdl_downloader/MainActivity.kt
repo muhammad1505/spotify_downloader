@@ -15,6 +15,9 @@ import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.*
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.UUID
+import org.json.JSONArray
+import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
 
@@ -24,10 +27,24 @@ class MainActivity : FlutterActivity() {
     private var downloadJob: Job? = null
     private var eventSink: EventChannel.EventSink? = null
     private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val queue = ArrayDeque<QueueTask>()
+    private val runningTasks = mutableMapOf<String, QueueTask>()
+    private var maxConcurrent = 1
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 100
     }
+
+    data class QueueTask(
+        val id: String,
+        val url: String,
+        val outputDir: String,
+        val quality: String,
+        val skipExisting: Boolean,
+        val embedArt: Boolean,
+        val normalize: Boolean,
+        var status: String = "queued"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,6 +74,50 @@ class MainActivity : FlutterActivity() {
 
                     startDownload(url, outputDir, quality, skipExisting, embedArt, normalize)
                     result.success(true)
+                }
+                "addToQueue" -> {
+                    val url = call.argument<String>("url") ?: ""
+                    val outputDir = call.argument<String>("outputDir") ?: ""
+                    val quality = call.argument<String>("quality") ?: "320"
+                    val skipExisting = call.argument<Boolean>("skipExisting") ?: true
+                    val embedArt = call.argument<Boolean>("embedArt") ?: true
+                    val normalize = call.argument<Boolean>("normalize") ?: false
+
+                    val taskId = UUID.randomUUID().toString()
+                    val task = QueueTask(
+                        id = taskId,
+                        url = url,
+                        outputDir = outputDir,
+                        quality = quality,
+                        skipExisting = skipExisting,
+                        embedArt = embedArt,
+                        normalize = normalize
+                    )
+                    queue.add(task)
+                    processQueue()
+                    result.success(taskId)
+                }
+                "pauseTask" -> {
+                    val id = call.argument<String>("id") ?: ""
+                    pauseTask(id)
+                    result.success(true)
+                }
+                "resumeTask" -> {
+                    val id = call.argument<String>("id") ?: ""
+                    resumeTask(id)
+                    result.success(true)
+                }
+                "cancelTask" -> {
+                    val id = call.argument<String>("id") ?: ""
+                    cancelTask(id)
+                    result.success(true)
+                }
+                "cancelAll" -> {
+                    cancelAll()
+                    result.success(true)
+                }
+                "getQueueStatus" -> {
+                    result.success(getQueueStatus())
                 }
                 "cancelDownload" -> {
                     cancelDownload()
@@ -93,6 +154,132 @@ class MainActivity : FlutterActivity() {
                 }
             }
         )
+    }
+
+    private fun processQueue() {
+        while (runningTasks.size < maxConcurrent && queue.isNotEmpty()) {
+            val task = queue.removeFirst()
+            task.status = "downloading"
+            runningTasks[task.id] = task
+            startForegroundDownload(task)
+            coroutineScope.launch {
+                try {
+                    val py = Python.getInstance()
+                    val module = py.getModule("downloader")
+                    module.callAttr("set_event_sink", PythonEventSink())
+                    module.callAttr(
+                        "start_download",
+                        task.id,
+                        task.url,
+                        task.outputDir,
+                        task.quality,
+                        task.skipExisting,
+                        task.embedArt,
+                        task.normalize
+                    )
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        eventSink?.success(
+                            """{"id":"${task.id}","status":"error","progress":0,"message":"${e.message?.replace("\"", "\\\"")}" }"""
+                        )
+                    }
+                } finally {
+                    runningTasks.remove(task.id)
+                    stopForegroundIfIdle()
+                    processQueue()
+                }
+            }
+        }
+    }
+
+    private fun pauseTask(id: String) {
+        runningTasks[id]?.status = "paused"
+        coroutineScope.launch {
+            try {
+                val py = Python.getInstance()
+                val module = py.getModule("downloader")
+                module.callAttr("cancel_task", id)
+            } catch (_: Exception) {}
+        }
+        val task = runningTasks.remove(id)
+        if (task != null) {
+            task.status = "paused"
+            queue.addFirst(task)
+        }
+    }
+
+    private fun resumeTask(id: String) {
+        val task = queue.find { it.id == id }
+        if (task != null) {
+            task.status = "queued"
+            processQueue()
+        }
+    }
+
+    private fun cancelTask(id: String) {
+        coroutineScope.launch {
+            try {
+                val py = Python.getInstance()
+                val module = py.getModule("downloader")
+                module.callAttr("cancel_task", id)
+            } catch (_: Exception) {}
+        }
+        runningTasks.remove(id)
+        queue.removeIf { it.id == id }
+        stopForegroundIfIdle()
+    }
+
+    private fun cancelAll() {
+        coroutineScope.launch {
+            try {
+                val py = Python.getInstance()
+                val module = py.getModule("downloader")
+                module.callAttr("cancel_all")
+            } catch (_: Exception) {}
+        }
+        runningTasks.clear()
+        queue.clear()
+        stopForegroundIfIdle()
+    }
+
+    private fun getQueueStatus(): String {
+        val arr = JSONArray()
+        for (task in runningTasks.values) {
+            arr.put(JSONObject().apply {
+                put("id", task.id)
+                put("url", task.url)
+                put("status", task.status)
+            })
+        }
+        for (task in queue) {
+            arr.put(JSONObject().apply {
+                put("id", task.id)
+                put("url", task.url)
+                put("status", task.status)
+            })
+        }
+        return arr.toString()
+    }
+
+    private fun startForegroundDownload(task: QueueTask) {
+        val intent = Intent(this, DownloadForegroundService::class.java).apply {
+            action = DownloadForegroundService.ACTION_START
+            putExtra(DownloadForegroundService.EXTRA_TITLE, "Downloading...")
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    private fun stopForegroundIfIdle() {
+        if (runningTasks.isEmpty()) {
+            val intent = Intent(this, DownloadForegroundService::class.java).apply {
+                action = DownloadForegroundService.ACTION_STOP
+            }
+            startService(intent)
+        }
     }
 
     private fun startDownload(

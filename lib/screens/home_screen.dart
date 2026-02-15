@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../core/constants.dart';
 import '../services/download_service.dart';
+import '../managers/queue_manager.dart';
 import '../widgets/url_input.dart';
 import '../widgets/download_options_card.dart';
 import '../widgets/progress_card.dart';
@@ -80,15 +81,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _startDownload() {
     if (!_isUrlValid) return;
 
-    final service = context.read<DownloadService>();
     HapticFeedback.mediumImpact();
-    service.startDownload(_urlController.text.trim());
+    context.read<DownloadService>().clearLogs();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DownloadService>(
-      builder: (context, downloadService, _) {
+    return Consumer2<DownloadService, QueueManager>(
+      builder: (context, downloadService, queueManager, _) {
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           physics: const BouncingScrollPhysics(),
@@ -182,7 +182,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       );
                     },
                     child: ElevatedButton(
-                      onPressed: _isUrlValid ? _startDownload : null,
+                      onPressed: _isUrlValid
+                          ? () async {
+                              _startDownload();
+                              await queueManager.enqueue(
+                                _urlController.text.trim(),
+                                quality: downloadService.options.quality,
+                                skipExisting: downloadService.options.skipExisting,
+                                embedArt: downloadService.options.embedArt,
+                                normalize: downloadService.options.normalizeAudio,
+                              );
+                            }
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isUrlValid
                             ? AppTheme.spotifyGreen
@@ -209,6 +220,45 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ),
+
+              if (queueManager.tasks.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Queue',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                AnimatedList(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  initialItemCount: queueManager.tasks.length,
+                  itemBuilder: (context, index, animation) {
+                    final task = queueManager.tasks[index];
+                    return SizeTransition(
+                      sizeFactor: animation,
+                      child: Card(
+                        child: ListTile(
+                          title: Text(task.title),
+                          subtitle: Text('${task.message} (${task.progress}%)'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.pause_rounded),
+                                onPressed: () => queueManager.pauseTask(task.id),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded),
+                                onPressed: () => queueManager.cancelTask(task.id),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
 
               // Progress Section
               if (downloadService.isDownloading ||

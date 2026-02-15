@@ -69,6 +69,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Library'), findsWidgets);
 
+    await tester.tap(find.text('Analytics'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Analytics'), findsWidgets);
+
     await tester.tap(find.text('Settings'));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Settings'), findsWidgets);

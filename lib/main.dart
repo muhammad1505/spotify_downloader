@@ -6,10 +6,15 @@ import 'core/theme.dart';
 import 'services/download_service.dart';
 import 'services/storage_service.dart';
 import 'services/settings_service.dart';
+import 'services/python_service.dart';
+import 'services/audio_service.dart';
+import 'managers/queue_manager.dart';
+import 'managers/analytics_manager.dart';
 import 'screens/home_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/about_screen.dart';
+import 'screens/analytics_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,6 +32,9 @@ void main() async {
   await settingsService.init();
 
   final storageService = StorageService();
+  final pythonService = PythonService();
+  final audioService = AudioService();
+  await audioService.init();
 
   runApp(
     MultiProvider(
@@ -37,6 +45,17 @@ void main() async {
             settingsService: settingsService,
           ),
         ),
+        ChangeNotifierProvider(
+          create: (_) => QueueManager(
+            pythonService: pythonService,
+            settingsService: settingsService,
+            storageService: storageService,
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => AnalyticsManager(storageService: storageService),
+        ),
+        Provider<AudioService>.value(value: audioService),
       ],
       child: SpotDLApp(settingsService: settingsService),
     ),
@@ -84,6 +103,7 @@ class _MainShellState extends State<MainShell> {
     _screens = [
       const HomeScreen(),
       LibraryScreen(storageService: widget.libraryStorageService),
+      const AnalyticsScreen(),
       SettingsScreen(settingsService: widget.settingsService),
       const AboutScreen(),
     ];
@@ -129,6 +149,11 @@ class _MainShellState extends State<MainShell> {
               icon: Icon(Icons.library_music_rounded),
               activeIcon: Icon(Icons.library_music_rounded),
               label: 'Library',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.analytics_rounded),
+              activeIcon: Icon(Icons.analytics_rounded),
+              label: 'Analytics',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_rounded),

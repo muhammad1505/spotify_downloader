@@ -57,9 +57,8 @@ chaquopy {
         version = "3.12"
 
         pip {
-            // spotdl uses yt-dlp under the hood
-            install("spotdl")
             install("yt-dlp")
+            install("mutagen")
         }
     }
 }
