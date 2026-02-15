@@ -1,4 +1,4 @@
-# 🎧 Spotify Downloader Pro (Android)
+# 🎧 Spotify Downloader (Android)
 
 Full offline Spotify downloader for Android with multi‑queue, analytics, and in‑app preview. Built with **Flutter**, **Kotlin**, and **Python (Chaquopy)** using **yt‑dlp**, **ffmpeg**, and **mutagen**.
 

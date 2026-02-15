@@ -4,7 +4,7 @@ class AppConstants {
   static const String appVersion = '1.0.0';
   static const int buildNumber = 1;
   static const String appDescription = 'Full Offline Spotify Downloader';
-  static const String githubUrl = 'https://github.com/your-username/spotdl_downloader_app';
+  static const String githubUrl = 'https://github.com/muhammad1505/spotify_downloader';
 
   // Method Channel
   static const String methodChannel = 'com.spotdl/bridge';
