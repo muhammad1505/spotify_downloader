@@ -27,7 +27,11 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        // Do not set ndk abiFilters when using --split-per-abi; Flutter controls ABIs.
+        // Chaquopy requires explicit ABI filters.
+        ndk {
+            // Python 3.12 only supports 64-bit ABIs.
+            abiFilters.addAll(listOf("arm64-v8a", "x86_64"))
+        }
     }
 
     buildTypes {
