@@ -62,7 +62,7 @@ chaquopy {
         version = "3.12"
 
         pip {
-            install("spotdl")
+            install("yt-dlp")
         }
     }
 }

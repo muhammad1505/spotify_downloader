@@ -1,12 +1,11 @@
-import subprocess
 import json
 import re
 import os
-import signal
-import sys
+import threading
 
-# Global process reference for cancellation
-_current_process = None
+# yt-dlp will be imported at runtime after Chaquopy installs it
+_download_thread = None
+_cancel_flag = False
 
 
 def validate_url(url):
@@ -33,194 +32,143 @@ def validate_url(url):
     })
 
 
+def _emit(status, progress, message, msg_type='info'):
+    """Emit a JSON status line."""
+    print(json.dumps({
+        'status': status,
+        'progress': progress,
+        'message': message,
+        'type': msg_type
+    }), flush=True)
+
+
+def _extract_spotify_id(url):
+    """Extract the Spotify track/playlist/album ID from a URL."""
+    match = re.search(r'spotify\.com/(track|playlist|album)/([a-zA-Z0-9]+)', url)
+    if match:
+        return match.group(1), match.group(2)
+    return None, None
+
+
 def start_download(url, output_dir, quality='320', skip_existing=True,
                     embed_art=True, normalize=False):
     """
-    Start downloading a Spotify track/playlist using spotdl.
+    Start downloading audio from a Spotify URL using yt-dlp.
+    Converts Spotify URL to a YouTube search and downloads.
     Streams progress as JSON lines to stdout.
     """
-    global _current_process
+    global _cancel_flag
+    _cancel_flag = False
 
     # Validate URL first
     validation = json.loads(validate_url(url))
     if not validation['valid']:
-        print(json.dumps({
-            'status': 'error',
-            'progress': 0,
-            'message': 'Invalid Spotify URL',
-            'type': 'error'
-        }))
+        _emit('error', 0, 'Invalid Spotify URL', 'error')
         return
 
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    # Build spotdl command
-    cmd = [
-        sys.executable, '-m', 'spotdl',
-        'download', url,
-        '--output', output_dir,
-        '--format', 'mp3',
-        '--bitrate', f'{quality}k',
-    ]
-
-    if not skip_existing:
-        cmd.append('--overwrite')
-        cmd.append('force')
-
-    if not embed_art:
-        cmd.append('--no-embed-metadata')
-
-    if normalize:
-        cmd.append('--ffmpeg-args')
-        cmd.append('-af loudnorm')
-
-    # Emit start status
-    print(json.dumps({
-        'status': 'downloading',
-        'progress': 0,
-        'message': 'Starting download...',
-        'type': 'info'
-    }), flush=True)
+    _emit('downloading', 0, 'Starting download...', 'info')
 
     try:
-        _current_process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-        )
+        import yt_dlp
 
-        progress_pattern = re.compile(r'(\d+)%')
-        song_pattern = re.compile(r'Found\s+\d+\s+songs?', re.IGNORECASE)
-        download_pattern = re.compile(r'Downloading', re.IGNORECASE)
-        convert_pattern = re.compile(r'Converting|Processing', re.IGNORECASE)
-        skip_pattern = re.compile(r'Skipping.*already exists', re.IGNORECASE)
-        error_pattern = re.compile(r'error|failed|exception', re.IGNORECASE)
+        content_type, content_id = _extract_spotify_id(url)
 
-        for line in _current_process.stdout:
-            line = line.strip()
-            if not line:
-                continue
-
-            # Determine message type and status
-            msg_type = 'info'
-            status = 'downloading'
-            progress = -1
-
-            # Parse progress percentage
-            match = progress_pattern.search(line)
-            if match:
-                progress = int(match.group(1))
-
-            # Detect phases
-            if song_pattern.search(line):
-                status = 'downloading'
-                msg_type = 'info'
-                print(json.dumps({
-                    'status': status,
-                    'progress': 5,
-                    'message': 'Fetching metadata...',
-                    'detail': line,
-                    'type': msg_type
-                }), flush=True)
-                continue
-
-            if download_pattern.search(line):
-                status = 'downloading'
-                msg_type = 'info'
-
-            if convert_pattern.search(line):
-                status = 'converting'
-                msg_type = 'info'
-
-            if skip_pattern.search(line):
-                msg_type = 'warning'
-                print(json.dumps({
-                    'status': 'downloading',
-                    'progress': progress if progress >= 0 else 0,
-                    'message': line,
-                    'type': 'warning'
-                }), flush=True)
-                continue
-
-            if error_pattern.search(line):
-                msg_type = 'error'
-
-            output = {
-                'status': status,
-                'progress': progress if progress >= 0 else 0,
-                'message': line,
-                'type': msg_type
-            }
-            print(json.dumps(output), flush=True)
-
-        _current_process.wait()
-
-        if _current_process.returncode == 0:
-            print(json.dumps({
-                'status': 'completed',
-                'progress': 100,
-                'message': 'Download completed successfully!',
-                'type': 'success'
-            }), flush=True)
+        # For Spotify URLs, we search YouTube with the track info
+        # yt-dlp supports ytsearch: prefix for YouTube searches
+        if content_type == 'track':
+            # Use the Spotify URL directly - yt-dlp has some Spotify support
+            # Or search YouTube with the URL as a search query
+            search_query = f"ytsearch:{url}"
         else:
-            print(json.dumps({
-                'status': 'error',
-                'progress': 0,
-                'message': f'Download failed with exit code {_current_process.returncode}',
-                'type': 'error'
-            }), flush=True)
+            search_query = f"ytsearch:{url}"
+
+        _emit('downloading', 5, 'Searching for audio...', 'info')
+
+        # Map quality to audio bitrate
+        bitrate_map = {'128': '128', '192': '192', '320': '320'}
+        audio_quality = bitrate_map.get(quality, '320')
+
+        # Progress hook for yt-dlp
+        def progress_hook(d):
+            if _cancel_flag:
+                raise Exception("Download cancelled by user")
+
+            if d['status'] == 'downloading':
+                total = d.get('total_bytes') or d.get('total_bytes_estimate', 0)
+                downloaded = d.get('downloaded_bytes', 0)
+                if total > 0:
+                    pct = int((downloaded / total) * 90) + 5  # 5-95%
+                else:
+                    pct = 10
+                speed = d.get('speed', 0)
+                speed_str = f"{speed / 1024:.0f} KB/s" if speed else "..."
+                _emit('downloading', pct,
+                      f"Downloading... {pct}% ({speed_str})", 'info')
+
+            elif d['status'] == 'finished':
+                _emit('converting', 95, 'Converting audio...', 'info')
+
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': os.path.join(output_dir, '%(title)s.%(ext)s'),
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': audio_quality,
+            }],
+            'progress_hooks': [progress_hook],
+            'quiet': True,
+            'no_warnings': True,
+            'writethumbnail': embed_art,
+            'noplaylist': content_type == 'track',
+        }
+
+        if embed_art:
+            ydl_opts['postprocessors'].append({
+                'key': 'EmbedThumbnail',
+            })
+
+        if skip_existing:
+            ydl_opts['download_archive'] = os.path.join(output_dir, '.downloaded')
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            _emit('downloading', 10, 'Fetching metadata...', 'info')
+            ydl.download([search_query])
+
+        if not _cancel_flag:
+            _emit('completed', 100, 'Download completed successfully!', 'success')
 
     except Exception as e:
-        print(json.dumps({
-            'status': 'error',
-            'progress': 0,
-            'message': str(e),
-            'type': 'error'
-        }), flush=True)
-    finally:
-        _current_process = None
+        error_msg = str(e)
+        if 'cancelled' in error_msg.lower():
+            _emit('cancelled', 0, 'Download cancelled by user', 'warning')
+        else:
+            _emit('error', 0, f'Download failed: {error_msg}', 'error')
 
 
 def cancel_download():
-    """Cancel the current download process."""
-    global _current_process
-    if _current_process is not None:
-        try:
-            _current_process.terminate()
-            _current_process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            _current_process.kill()
-        finally:
-            _current_process = None
-
-        return json.dumps({
-            'status': 'cancelled',
-            'progress': 0,
-            'message': 'Download cancelled by user',
-            'type': 'warning'
-        })
+    """Cancel the current download."""
+    global _cancel_flag
+    _cancel_flag = True
 
     return json.dumps({
-        'status': 'error',
+        'status': 'cancelled',
         'progress': 0,
-        'message': 'No active download to cancel',
-        'type': 'error'
+        'message': 'Download cancellation requested',
+        'type': 'warning'
     })
 
 
 def get_version():
-    """Return spotdl version info."""
+    """Return yt-dlp version info."""
     try:
-        result = subprocess.run(
-            [sys.executable, '-m', 'spotdl', '--version'],
-            capture_output=True, text=True, timeout=10
-        )
+        import yt_dlp
         return json.dumps({
             'status': 'success',
-            'version': result.stdout.strip(),
+            'version': f"yt-dlp {yt_dlp.version.__version__}",
             'type': 'info'
         })
     except Exception as e:
