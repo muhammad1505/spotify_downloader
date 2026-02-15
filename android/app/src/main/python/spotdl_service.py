@@ -12,6 +12,7 @@ except ImportError:
 
 _download_thread = None
 _cancel_flag = False
+_event_sink = None
 
 
 def validate_url(url):
@@ -47,10 +48,23 @@ def _emit(status, progress, message, msg_type='info'):
         'type': msg_type
     })
     try:
+        if _event_sink is not None:
+            _event_sink.emit(payload)
+            return
+    except Exception:
+        pass
+    try:
         from com.example.spotdl_downloader import PythonEmitter
         PythonEmitter.emit(payload)
+        return
     except Exception:
         print(payload, flush=True)
+
+
+def set_event_sink(sink):
+    """Set Kotlin event sink for streaming progress."""
+    global _event_sink
+    _event_sink = sink
 
 
 def _extract_spotify_id(url):

@@ -109,6 +109,7 @@ class MainActivity : FlutterActivity() {
             try {
                 val py = Python.getInstance()
                 val module = py.getModule("spotdl_service")
+                module.callAttr("set_event_sink", PythonEventSink())
 
                 module.callAttr(
                     "start_download",
