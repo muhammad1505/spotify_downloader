@@ -295,7 +295,7 @@ class MainActivity : FlutterActivity() {
         downloadJob = coroutineScope.launch {
             try {
                 val py = Python.getInstance()
-                    val module = py.getModule("downloader_service")
+                val module = py.getModule("downloader_service")
                 module.callAttr("set_event_sink", PythonEventSink())
 
                 module.callAttr(
