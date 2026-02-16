@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import time
@@ -51,6 +52,10 @@ def _finalize(payload: Dict) -> str:
 
 def _ffmpeg_path() -> str:
     return os.getenv("FFMPEG_PATH", "ffmpeg")
+
+
+def _has_ffmpeg(ffmpeg_cmd: str) -> bool:
+    return shutil.which(ffmpeg_cmd) is not None
 
 
 def _fetch_oembed_title(url: str) -> Optional[str]:
@@ -226,18 +231,26 @@ def start_download(
             "message": "Converting to mp3...",
         })
 
-        if not os.path.exists(dest_path):
-            cmd = [
-                ffmpeg,
-                "-y",
-                "-i",
-                src_path,
-                "-vn",
-                "-b:a",
-                f"{quality}k",
-                dest_path,
-            ]
-            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ffmpeg_available = _has_ffmpeg(ffmpeg)
+        if ffmpeg_available:
+            if not os.path.exists(dest_path):
+                cmd = [
+                    ffmpeg,
+                    "-y",
+                    "-i",
+                    src_path,
+                    "-vn",
+                    "-b:a",
+                    f"{quality}k",
+                    dest_path,
+                ]
+                subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            # Fallback for devices without ffmpeg binary: keep original downloaded format.
+            src_ext = os.path.splitext(src_path)[1] or ".m4a"
+            dest_path = os.path.join(output_dir, f"{base_name}{src_ext}")
+            if not os.path.exists(dest_path):
+                shutil.copy2(src_path, dest_path)
 
         cover_path = None
         if embed_art:
@@ -249,19 +262,20 @@ def start_download(
                 except Exception:
                     cover_path = None
 
-        _tag_mp3(
-            dest_path,
-            info.get("title") or "",
-            info.get("artist") or info.get("uploader") or "",
-            info.get("album") or "",
-            cover_path,
-        )
+        if dest_path.lower().endswith(".mp3"):
+            _tag_mp3(
+                dest_path,
+                info.get("title") or "",
+                info.get("artist") or info.get("uploader") or "",
+                info.get("album") or "",
+                cover_path,
+            )
 
         return _finalize({
             "id": task_id,
             "status": "completed",
             "progress": 100,
-            "message": "Download completed",
+            "message": "Download completed" if ffmpeg_available else "Download completed (no ffmpeg: original format)",
             "filePath": dest_path,
         })
     except Exception as exc:
