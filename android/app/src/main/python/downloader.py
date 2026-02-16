@@ -23,11 +23,17 @@ except Exception:
 
 _event_sink = None
 _cancel_flags: Dict[str, bool] = {}
+_ffmpeg_override: Optional[str] = None
 
 
 def set_event_sink(sink):
     global _event_sink
     _event_sink = sink
+
+
+def set_ffmpeg_path(path: str):
+    global _ffmpeg_override
+    _ffmpeg_override = path
 
 
 def _emit(payload: Dict):
@@ -51,6 +57,8 @@ def _finalize(payload: Dict) -> str:
 
 
 def _ffmpeg_path() -> str:
+    if _ffmpeg_override:
+        return _ffmpeg_override
     return os.getenv("FFMPEG_PATH", "ffmpeg")
 
 

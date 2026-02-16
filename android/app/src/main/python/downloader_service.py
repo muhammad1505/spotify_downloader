@@ -63,6 +63,10 @@ def set_event_sink(sink):
     downloader.set_event_sink(sink)
 
 
+def set_ffmpeg_path(path):
+    downloader.set_ffmpeg_path(path)
+
+
 def _extract_spotify_id(url):
     """Extract the Spotify track/playlist/album ID from a URL."""
     match = re.search(r'spotify\.com/(track|playlist|album)/([a-zA-Z0-9]+)', url)

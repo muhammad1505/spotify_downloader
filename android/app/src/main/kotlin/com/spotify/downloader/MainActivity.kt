@@ -14,6 +14,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.*
+import java.io.File
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.UUID
@@ -31,6 +32,7 @@ class MainActivity : FlutterActivity() {
     private val queue = ArrayDeque<QueueTask>()
     private val runningTasks = mutableMapOf<String, QueueTask>()
     private var maxConcurrent = 1
+    private var bundledFfmpegPath: String? = null
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 100
@@ -54,6 +56,8 @@ class MainActivity : FlutterActivity() {
         if (!Python.isStarted()) {
             Python.start(AndroidPlatform(this))
         }
+
+        bundledFfmpegPath = ensureBundledFfmpegBinary()
 
         // Request permissions
         requestRequiredPermissions()
@@ -172,6 +176,7 @@ class MainActivity : FlutterActivity() {
                     startForegroundDownload(task)
                     val py = Python.getInstance()
                     val module = py.getModule("downloader")
+                    bundledFfmpegPath?.let { module.callAttr("set_ffmpeg_path", it) }
                     withContext(Dispatchers.Main) {
                         eventSink?.success(
                             """{"id":"${task.id}","status":"downloading","progress":2,"message":"Python module loaded"}"""
@@ -317,6 +322,7 @@ class MainActivity : FlutterActivity() {
             try {
                 val py = Python.getInstance()
                 val module = py.getModule("downloader_service")
+                bundledFfmpegPath?.let { module.callAttr("set_ffmpeg_path", it) }
                 module.callAttr("set_event_sink", PythonEventSink())
 
                 module.callAttr(
@@ -406,6 +412,26 @@ class MainActivity : FlutterActivity() {
 
         if (permissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERMISSION_REQUEST_CODE)
+        }
+    }
+
+    private fun ensureBundledFfmpegBinary(): String? {
+        val targetAbi = Build.SUPPORTED_ABIS.firstOrNull { it == "arm64-v8a" || it == "x86_64" } ?: return null
+        val assetPath = "ffmpeg/$targetAbi/ffmpeg"
+        val outputFile = File(filesDir, "ffmpeg/$targetAbi/ffmpeg")
+        return try {
+            if (!outputFile.exists() || outputFile.length() == 0L) {
+                outputFile.parentFile?.mkdirs()
+                assets.open(assetPath).use { input ->
+                    outputFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }
+            outputFile.setExecutable(true, false)
+            outputFile.absolutePath
+        } catch (_: Exception) {
+            null
         }
     }
 
