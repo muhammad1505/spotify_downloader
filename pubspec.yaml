@@ -1,5 +1,5 @@
-name: spotdl_downloader
-description: "Full offline Spotify Downloader powered by spotdl"
+name: spotify_downloader
+description: "Full offline Spotify Downloader powered by yt-dlp"
 publish_to: 'none'
 
 version: 1.0.0+1

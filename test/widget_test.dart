@@ -4,14 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:spotdl_downloader/main.dart';
-import 'package:spotdl_downloader/managers/analytics_manager.dart';
-import 'package:spotdl_downloader/managers/queue_manager.dart';
-import 'package:spotdl_downloader/models/download_task.dart';
-import 'package:spotdl_downloader/services/download_service.dart';
-import 'package:spotdl_downloader/services/settings_service.dart';
-import 'package:spotdl_downloader/models/download_item.dart';
-import 'package:spotdl_downloader/services/storage_service.dart';
+import 'package:spotify_downloader/main.dart';
+import 'package:spotify_downloader/managers/analytics_manager.dart';
+import 'package:spotify_downloader/managers/queue_manager.dart';
+import 'package:spotify_downloader/models/download_task.dart';
+import 'package:spotify_downloader/services/download_service.dart';
+import 'package:spotify_downloader/services/settings_service.dart';
+import 'package:spotify_downloader/models/download_item.dart';
+import 'package:spotify_downloader/services/storage_service.dart';
 
 class FakeStorageService extends StorageService {
   @override

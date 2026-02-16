@@ -38,7 +38,7 @@ def _emit(payload: Dict):
     except Exception:
         pass
     try:
-        from com.example.spotdl_downloader import PythonEmitter
+        from com.spotify.downloader import PythonEmitter
         PythonEmitter.emit(data)
     except Exception:
         print(data, flush=True)

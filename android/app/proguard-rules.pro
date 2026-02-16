@@ -14,7 +14,7 @@
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
 
 # Keep our service
--keep class com.example.spotdl_downloader.DownloadForegroundService { *; }
+-keep class com.spotify.downloader.DownloadForegroundService { *; }
 
 # Play Core (Flutter references these but we don't use deferred components)
 -dontwarn com.google.android.play.core.**

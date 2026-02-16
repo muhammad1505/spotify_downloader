@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:spotdl_downloader/main.dart' as app;
+import 'package:spotify_downloader/main.dart' as app;
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

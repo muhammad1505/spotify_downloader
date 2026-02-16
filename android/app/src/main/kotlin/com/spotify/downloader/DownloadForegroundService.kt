@@ -1,4 +1,4 @@
-package com.example.spotdl_downloader
+package com.spotify.downloader
 
 import android.app.*
 import android.content.Context
@@ -10,7 +10,7 @@ import androidx.core.app.NotificationCompat
 class DownloadForegroundService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "spotdl_download_channel"
+        const val CHANNEL_ID = "spotify_download_channel"
         const val NOTIFICATION_ID = 1001
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
@@ -51,7 +51,7 @@ class DownloadForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "SpotDL Downloads",
+                "Spotify Downloads",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Download progress notifications"
@@ -73,7 +73,7 @@ class DownloadForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SpotDL Downloader")
+            .setContentTitle("Spotify Downloader")
             .setContentText(title)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(100, progress, progress == 0)

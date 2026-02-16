@@ -44,7 +44,7 @@ lib/
 android/
 ├── app/src/main/
 │   ├── kotlin/      # MainActivity, Foreground service
-│   └── python/      # downloader.py, spotdl_service.py
+│   └── python/      # downloader.py, bridge module
 
 backend/python/
 └── downloader.py    # Reference engine (same logic as Android)
@@ -82,7 +82,7 @@ git push origin v1.0.0
 ## 📝 Notes
 
 - ffmpeg is invoked via `FFMPEG_PATH` (defaults to `ffmpeg`).
-- Spotdl is **not** used on Android because of native dependency conflicts.
+- Spotdl is not used on Android because of native dependency conflicts.
 
 ## 📜 License
 

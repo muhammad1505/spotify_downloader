@@ -1,14 +1,14 @@
 class AppConstants {
   // App Info
-  static const String appName = 'SpotDL Downloader';
+  static const String appName = 'Spotify Downloader';
   static const String appVersion = '1.0.0';
   static const int buildNumber = 1;
   static const String appDescription = 'Full Offline Spotify Downloader';
   static const String githubUrl = 'https://github.com/muhammad1505/spotify_downloader';
 
   // Method Channel
-  static const String methodChannel = 'com.spotdl/bridge';
-  static const String eventChannel = 'com.spotdl/progress';
+  static const String methodChannel = 'com.spotify.downloader/bridge';
+  static const String eventChannel = 'com.spotify.downloader/progress';
 
   // Spotify URL Patterns
   static final RegExp spotifyTrackRegex = RegExp(
@@ -33,7 +33,7 @@ class AppConstants {
   static const String modePlaylist = 'playlist';
 
   // Database
-  static const String dbName = 'spotdl_downloads.db';
+  static const String dbName = 'spotify_downloads.db';
   static const int dbVersion = 1;
   static const String tableDownloads = 'downloads';
 

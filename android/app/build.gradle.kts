@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.spotdl_downloader"
+    namespace = "com.spotify.downloader"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.spotdl_downloader"
+        applicationId = "com.spotify.downloader"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

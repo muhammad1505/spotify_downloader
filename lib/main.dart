@@ -56,20 +56,20 @@ void main() async {
         ),
         Provider<AudioService>.value(value: audioService),
       ],
-      child: SpotDLApp(settingsService: settingsService),
+      child: SpotifyDownloaderApp(settingsService: settingsService),
     ),
   );
 }
 
-class SpotDLApp extends StatelessWidget {
+class SpotifyDownloaderApp extends StatelessWidget {
   final SettingsService settingsService;
 
-  const SpotDLApp({super.key, required this.settingsService});
+  const SpotifyDownloaderApp({super.key, required this.settingsService});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SpotDL Downloader',
+      title: 'Spotify Downloader',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme(),
       home: MainShell(settingsService: settingsService),

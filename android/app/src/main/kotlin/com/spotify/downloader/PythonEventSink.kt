@@ -1,4 +1,4 @@
-package com.example.spotdl_downloader
+package com.spotify.downloader
 
 import android.os.Handler
 import android.os.Looper

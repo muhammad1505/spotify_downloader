@@ -1,4 +1,4 @@
-package com.example.spotdl_downloader
+package com.spotify.downloader
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -21,8 +21,8 @@ import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
 
-    private val METHOD_CHANNEL = "com.spotdl/bridge"
-    private val EVENT_CHANNEL = "com.spotdl/progress"
+    private val METHOD_CHANNEL = "com.spotify.downloader/bridge"
+    private val EVENT_CHANNEL = "com.spotify.downloader/progress"
 
     private var downloadJob: Job? = null
     private var eventSink: EventChannel.EventSink? = null
@@ -130,7 +130,7 @@ class MainActivity : FlutterActivity() {
                 }
                 "getVersion" -> {
                     coroutineScope.launch {
-                        val version = getSpotdlVersion()
+                        val version = getEngineVersion()
                         withContext(Dispatchers.Main) {
                             result.success(version)
                         }
@@ -295,7 +295,7 @@ class MainActivity : FlutterActivity() {
         downloadJob = coroutineScope.launch {
             try {
                 val py = Python.getInstance()
-                val module = py.getModule("spotdl_service")
+                    val module = py.getModule("downloader_service")
                 module.callAttr("set_event_sink", PythonEventSink())
 
                 module.callAttr(
@@ -324,7 +324,7 @@ class MainActivity : FlutterActivity() {
         coroutineScope.launch {
             try {
                 val py = Python.getInstance()
-                val module = py.getModule("spotdl_service")
+                val module = py.getModule("downloader_service")
                 val result = module.callAttr("cancel_download").toString()
 
                 withContext(Dispatchers.Main) {
@@ -343,17 +343,17 @@ class MainActivity : FlutterActivity() {
     private fun validateUrl(url: String): String {
         return try {
             val py = Python.getInstance()
-            val module = py.getModule("spotdl_service")
+            val module = py.getModule("downloader_service")
             module.callAttr("validate_url", url).toString()
         } catch (e: Exception) {
             """{"valid":false,"type":null,"url":"$url","message":"${e.message}"}"""
         }
     }
 
-    private suspend fun getSpotdlVersion(): String {
+    private suspend fun getEngineVersion(): String {
         return try {
             val py = Python.getInstance()
-            val module = py.getModule("spotdl_service")
+            val module = py.getModule("downloader_service")
             module.callAttr("get_version").toString()
         } catch (e: Exception) {
             """{"status":"error","message":"${e.message}","type":"error"}"""

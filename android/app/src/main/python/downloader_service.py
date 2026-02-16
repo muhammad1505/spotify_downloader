@@ -2,7 +2,6 @@ import json
 import re
 import os
 import threading
-import traceback
 import urllib.request
 import downloader
 
@@ -50,7 +49,7 @@ def _emit(status, progress, message, msg_type='info'):
     except Exception:
         pass
     try:
-        from com.example.spotdl_downloader import PythonEmitter
+        from com.spotify.downloader import PythonEmitter
         PythonEmitter.emit(payload)
         return
     except Exception:
@@ -139,6 +138,7 @@ def cancel_download():
 def get_version():
     """Return yt-dlp version info."""
     try:
+        import yt_dlp  # pyre-ignore[21]
         return json.dumps({
             'status': 'success',
             'version': f"yt-dlp {yt_dlp.version.__version__}",  # pyre-ignore[16]

@@ -107,12 +107,6 @@ class AboutScreen extends StatelessWidget {
             'Embedded Python runtime for Android apps',
           ),
           _buildPoweredByCard(
-            '🎵',
-            'spotdl',
-            'Spotify Downloader Engine',
-            'Download music from Spotify via YouTube',
-          ),
-          _buildPoweredByCard(
             '🎬',
             'yt-dlp',
             'Media Downloader',
