@@ -76,9 +76,7 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider<DownloadService>(
-            create: (_) => DownloadService(
-              settingsService: settingsService,
-            ),
+            create: (_) => DownloadService(),
           ),
           ChangeNotifierProvider<QueueManager>(
             create: (_) => FakeQueueManager(),

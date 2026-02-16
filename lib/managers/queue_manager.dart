@@ -90,11 +90,9 @@ class QueueManager extends ChangeNotifier {
 
     DownloadTaskStatus nextStatus = DownloadTaskStatus.downloading;
     switch (status) {
-      case AppConstants.statusCompleted:
       case 'completed':
         nextStatus = DownloadTaskStatus.completed;
         break;
-      case AppConstants.statusError:
       case 'error':
         nextStatus = DownloadTaskStatus.failed;
         break;

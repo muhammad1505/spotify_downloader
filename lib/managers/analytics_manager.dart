@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../services/storage_service.dart';
-import '../models/download_item.dart';
 
 class AnalyticsSummary {
   final int totalDownloads;

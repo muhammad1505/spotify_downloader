@@ -15,7 +15,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => context.read<AnalyticsManager>().refresh());
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<AnalyticsManager>().refresh();
+    });
   }
 
   @override

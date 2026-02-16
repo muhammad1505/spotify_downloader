@@ -40,9 +40,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => DownloadService(
-            settingsService: settingsService,
-          ),
+          create: (_) => DownloadService(),
         ),
         ChangeNotifierProvider(
           create: (_) => QueueManager(

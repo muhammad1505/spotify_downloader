@@ -1,16 +1,11 @@
 import 'package:flutter/foundation.dart';
 import '../core/constants.dart';
 import '../models/download_options.dart';
-import 'settings_service.dart';
 
 class DownloadService extends ChangeNotifier {
-  final SettingsService _settingsService;
-
   DownloadOptions _options = const DownloadOptions();
 
-  DownloadService({
-    required SettingsService settingsService,
-  }) : _settingsService = settingsService;
+  DownloadService();
 
   // Getters
   DownloadOptions get options => _options;
