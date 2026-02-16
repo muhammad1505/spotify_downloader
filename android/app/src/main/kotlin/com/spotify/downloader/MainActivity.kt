@@ -162,9 +162,14 @@ class MainActivity : FlutterActivity() {
             val task = queue.removeFirst()
             task.status = "downloading"
             runningTasks[task.id] = task
-            startForegroundDownload(task)
             coroutineScope.launch {
                 try {
+                    withContext(Dispatchers.Main) {
+                        eventSink?.success(
+                            """{"id":"${task.id}","status":"downloading","progress":1,"message":"Starting download..."}"""
+                        )
+                    }
+                    startForegroundDownload(task)
                     val py = Python.getInstance()
                     val module = py.getModule("downloader")
                     module.callAttr("set_event_sink", PythonEventSink())

@@ -35,9 +35,13 @@ class FakeStorageService extends StorageService {
 
 class FakeQueueManager extends ChangeNotifier implements QueueManager {
   final List<DownloadTask> _tasks = [];
+  final List<String> _logs = [];
 
   @override
   List<DownloadTask> get tasks => List.unmodifiable(_tasks);
+
+  @override
+  List<String> get logs => List.unmodifiable(_logs);
 
   @override
   Future<String> enqueue(String url,

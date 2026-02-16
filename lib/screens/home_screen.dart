@@ -256,6 +256,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ],
 
+              if (queueManager.logs.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Console',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(80),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.spotifyLightGrey.withAlpha(50)),
+                  ),
+                  child: Text(
+                    queueManager.logs.reversed.take(12).toList().reversed.join('\n'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.spotifySubtle,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 32),
             ],
           ),

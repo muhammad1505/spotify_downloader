@@ -14,6 +14,7 @@ class QueueManager extends ChangeNotifier {
   final StorageService _storageService;
 
   final List<DownloadTask> _tasks = [];
+  final List<String> _logs = [];
   StreamSubscription? _progressSub;
 
   QueueManager({
@@ -23,10 +24,16 @@ class QueueManager extends ChangeNotifier {
   })  : _pythonService = pythonService,
         _settingsService = settingsService,
         _storageService = storageService {
-    _progressSub = _pythonService.progressStream.listen(_handleProgress);
+    _progressSub = _pythonService.progressStream.listen(
+      _handleProgress,
+      onError: (Object error) {
+        _appendLog('Stream error: $error');
+      },
+    );
   }
 
   List<DownloadTask> get tasks => List.unmodifiable(_tasks);
+  List<String> get logs => List.unmodifiable(_logs);
 
   Future<String> enqueue(String url, {
     String quality = AppConstants.defaultQuality,
@@ -55,6 +62,7 @@ class QueueManager extends ChangeNotifier {
     );
 
     _tasks.add(task);
+    _appendLog('Queue: added task $taskId');
     notifyListeners();
     return taskId;
   }
@@ -82,11 +90,24 @@ class QueueManager extends ChangeNotifier {
   }
 
   void _handleProgress(Map<String, dynamic> event) async {
-    final id = (event['id'] ?? '').toString();
+    var id = (event['id'] ?? '').toString();
     final status = (event['status'] ?? '').toString();
-    final progress = event['progress'] as int? ?? 0;
+    final progress = (event['progress'] as num?)?.toInt() ?? 0;
     final message = (event['message'] ?? '').toString();
     final filePath = event['filePath'] as String?;
+    _appendLog('Event: id=${id.isEmpty ? "-" : id} status=$status progress=$progress msg=$message');
+
+    if (id.isEmpty) {
+      final activeIndex = _tasks.indexWhere(
+        (t) =>
+            t.status == DownloadTaskStatus.queued ||
+            t.status == DownloadTaskStatus.downloading ||
+            t.status == DownloadTaskStatus.processing,
+      );
+      if (activeIndex != -1) {
+        id = _tasks[activeIndex].id;
+      }
+    }
 
     DownloadTaskStatus nextStatus = DownloadTaskStatus.downloading;
     switch (status) {
@@ -127,7 +148,10 @@ class QueueManager extends ChangeNotifier {
     String? filePath,
   }) {
     final index = _tasks.indexWhere((t) => t.id == id);
-    if (index == -1) return;
+    if (index == -1) {
+      _appendLog('Task not found for event id=$id');
+      return;
+    }
     final current = _tasks[index];
     _tasks[index] = current.copyWith(
       progress: progress ?? current.progress,
@@ -165,5 +189,14 @@ class QueueManager extends ChangeNotifier {
   void dispose() {
     _progressSub?.cancel();
     super.dispose();
+  }
+
+  void _appendLog(String text) {
+    final ts = DateTime.now().toIso8601String().substring(11, 19);
+    _logs.add('[$ts] $text');
+    if (_logs.length > 200) {
+      _logs.removeRange(0, _logs.length - 200);
+    }
+    notifyListeners();
   }
 }
