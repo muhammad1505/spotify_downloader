@@ -30,8 +30,4 @@ class DownloadService extends ChangeNotifier {
     return {'valid': false, 'type': null};
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 }
