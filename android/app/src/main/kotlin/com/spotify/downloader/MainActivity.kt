@@ -57,7 +57,7 @@ class MainActivity : FlutterActivity() {
             Python.start(AndroidPlatform(this))
         }
 
-        bundledFfmpegPath = ensureBundledFfmpegBinary()
+        bundledFfmpegPath = getBundledFfmpegPath()
 
         // Request permissions
         requestRequiredPermissions()
@@ -415,24 +415,9 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun ensureBundledFfmpegBinary(): String? {
-        val targetAbi = Build.SUPPORTED_ABIS.firstOrNull { it == "arm64-v8a" || it == "x86_64" } ?: return null
-        val assetPath = "ffmpeg/$targetAbi/ffmpeg"
-        val outputFile = File(filesDir, "ffmpeg/$targetAbi/ffmpeg")
-        return try {
-            if (!outputFile.exists() || outputFile.length() == 0L) {
-                outputFile.parentFile?.mkdirs()
-                assets.open(assetPath).use { input ->
-                    outputFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            }
-            outputFile.setExecutable(true, false)
-            outputFile.absolutePath
-        } catch (_: Exception) {
-            null
-        }
+    private fun getBundledFfmpegPath(): String? {
+        val soFile = File(applicationInfo.nativeLibraryDir, "libffmpeg.so")
+        return if (soFile.exists()) soFile.absolutePath else null
     }
 
     override fun onDestroy() {

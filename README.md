@@ -81,7 +81,7 @@ git push origin v1.0.0
 
 ## 📝 Notes
 
-- ffmpeg is bundled in APK assets for `arm64-v8a` and `x86_64`, extracted on first run, then used by Python engine.
+- ffmpeg is bundled per-ABI in `android/app/src/main/jniLibs` and executed from Android `nativeLibraryDir`.
 - mutagen is bundled through Chaquopy pip requirements (`android/app/build.gradle.kts`).
 - Spotdl is not used on Android because of native dependency conflicts.
 
