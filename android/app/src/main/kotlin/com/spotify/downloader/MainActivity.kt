@@ -177,7 +177,7 @@ class MainActivity : FlutterActivity() {
                             """{"id":"${task.id}","status":"downloading","progress":2,"message":"Python module loaded"}"""
                         )
                     }
-                    module.callAttr(
+                    val result = module.callAttr(
                         "start_download",
                         task.id,
                         task.url,
@@ -188,9 +188,15 @@ class MainActivity : FlutterActivity() {
                         task.normalize
                     )
                     withContext(Dispatchers.Main) {
-                        eventSink?.success(
-                            """{"id":"${task.id}","status":"processing","progress":95,"message":"Python task finished"}"""
-                        )
+                        // Ensure terminal status is always forwarded, even if Python emitter path fails.
+                        val payload = result?.toString()
+                        if (!payload.isNullOrBlank()) {
+                            eventSink?.success(payload)
+                        } else {
+                            eventSink?.success(
+                                """{"id":"${task.id}","status":"processing","progress":95,"message":"Python task finished"}"""
+                            )
+                        }
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {

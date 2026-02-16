@@ -44,6 +44,11 @@ def _emit(payload: Dict):
         print(data, flush=True)
 
 
+def _finalize(payload: Dict) -> str:
+    _emit(payload)
+    return json.dumps(payload)
+
+
 def _ffmpeg_path() -> str:
     return os.getenv("FFMPEG_PATH", "ffmpeg")
 
@@ -117,13 +122,12 @@ def start_download(
     normalize: bool = False,
 ):
     if yt_dlp is None:
-        _emit({
+        return _finalize({
             "id": task_id,
             "status": "error",
             "progress": 0,
             "message": "yt-dlp not available",
         })
-        return
 
     _cancel_flags[task_id] = False
     os.makedirs(output_dir, exist_ok=True)
@@ -200,13 +204,12 @@ def start_download(
             info = ydl.extract_info(search_query, download=True)
 
         if _cancel_flags.get(task_id):
-            _emit({
+            return _finalize({
                 "id": task_id,
                 "status": "cancelled",
                 "progress": 0,
                 "message": "Download cancelled",
             })
-            return
 
         if "entries" in info and info["entries"]:
             info = info["entries"][0]
@@ -254,7 +257,7 @@ def start_download(
             cover_path,
         )
 
-        _emit({
+        return _finalize({
             "id": task_id,
             "status": "completed",
             "progress": 100,
@@ -264,7 +267,7 @@ def start_download(
     except Exception as exc:
         msg = str(exc)
         status = "cancelled" if "cancelled" in msg.lower() else "error"
-        _emit({
+        return _finalize({
             "id": task_id,
             "status": status,
             "progress": 0,

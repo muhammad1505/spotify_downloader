@@ -235,6 +235,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         task.status == DownloadTaskStatus.processing;
                     final canResume = task.status == DownloadTaskStatus.paused ||
                         task.status == DownloadTaskStatus.queued;
+                    final canCancel = task.status != DownloadTaskStatus.completed &&
+                        task.status != DownloadTaskStatus.cancelled &&
+                        task.status != DownloadTaskStatus.failed;
                     return SizeTransition(
                       sizeFactor: animation,
                       child: Card(
@@ -265,7 +268,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                               IconButton(
                                 icon: const Icon(Icons.close_rounded),
-                                onPressed: () => queueManager.cancelTask(task.id),
+                                onPressed: canCancel
+                                    ? () => queueManager.cancelTask(task.id)
+                                    : null,
                               ),
                             ],
                           ),
