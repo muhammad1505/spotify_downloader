@@ -193,7 +193,7 @@ def start_download(
     })
 
     tmp_dir = tempfile.mkdtemp(prefix="spotify_")
-    output_template = os.path.join(tmp_dir, "%(title)s.%(ext)s")
+    output_template = os.path.join(tmp_dir, "%(id)s.%(ext)s")
 
     def progress_hook(d):
         if _cancel_flags.get(task_id):
@@ -224,6 +224,7 @@ def start_download(
         "no_warnings": True,
         "writethumbnail": embed_art,
         "noplaylist": True,
+        "restrictfilenames": True,
         "socket_timeout": 20,
         "retries": 3,
         "fragment_retries": 3,
@@ -254,6 +255,15 @@ def start_download(
             info = info["entries"][0]
 
         src_path = _pick_downloaded_file(info, tmp_dir) or ydl.prepare_filename(info)
+        if (not src_path) and info.get("id"):
+            try:
+                vid = info.get("id")
+                for name in os.listdir(tmp_dir):
+                    if name.startswith(f"{vid}."):
+                        src_path = os.path.join(tmp_dir, name)
+                        break
+            except Exception:
+                pass
         if not os.path.exists(src_path):
             return _finalize({
                 "id": task_id,
