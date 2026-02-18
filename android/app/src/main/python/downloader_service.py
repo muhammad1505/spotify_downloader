@@ -8,23 +8,21 @@ import downloader
 _download_thread = None
 _cancel_flag = False
 _event_sink = None
+_SPOTIFY_URL_RE = re.compile(
+    r'https?://open\.spotify\.com/(?:intl-[a-z]{2}/)?(track|playlist|album)/([a-zA-Z0-9]+)',
+)
+_SPOTIFY_URI_RE = re.compile(r'spotify:(track|playlist|album):([a-zA-Z0-9]+)')
 
 
 def validate_url(url):
     """Validate if the given URL is a valid Spotify link."""
-    patterns = {
-        'track': r'https?://open\.spotify\.com/track/[a-zA-Z0-9]+',
-        'playlist': r'https?://open\.spotify\.com/playlist/[a-zA-Z0-9]+',
-        'album': r'https?://open\.spotify\.com/album/[a-zA-Z0-9]+',
-    }
-
-    for url_type, pattern in patterns.items():
-        if re.match(pattern, url):
-            return json.dumps({
-                'valid': True,
-                'type': url_type,
-                'url': url
-            })
+    match = _SPOTIFY_URL_RE.search(url) or _SPOTIFY_URI_RE.search(url)
+    if match:
+        return json.dumps({
+            'valid': True,
+            'type': match.group(1),
+            'url': url
+        })
 
     return json.dumps({
         'valid': False,
@@ -69,15 +67,24 @@ def set_ffmpeg_path(path):
 
 def _extract_spotify_id(url):
     """Extract the Spotify track/playlist/album ID from a URL."""
-    match = re.search(r'spotify\.com/(track|playlist|album)/([a-zA-Z0-9]+)', url)
+    match = _SPOTIFY_URL_RE.search(url) or _SPOTIFY_URI_RE.search(url)
     if match:
         return match.group(1), match.group(2)
     return None, None
 
 
+def _normalize_spotify_url(url):
+    """Convert spotify: URIs to https URLs for oEmbed/YT search usage."""
+    match = _SPOTIFY_URI_RE.search(url)
+    if not match:
+        return url
+    return f"https://open.spotify.com/{match.group(1)}/{match.group(2)}"
+
+
 def _fetch_spotify_oembed_title(url):
     """Fetch Spotify oEmbed data to build a better YouTube search query."""
     try:
+        url = _normalize_spotify_url(url)
         oembed_url = f"https://open.spotify.com/oembed?url={url}"
         with urllib.request.urlopen(oembed_url, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -114,7 +121,7 @@ def start_download(url, output_dir, quality='320', skip_existing=True,
         task_id = "single"
         downloader.start_download(
             task_id,
-            url,
+            _normalize_spotify_url(url),
             output_dir,
             quality,
             skip_existing,

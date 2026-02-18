@@ -12,16 +12,16 @@ class AppConstants {
 
   // Spotify URL Patterns
   static final RegExp spotifyTrackRegex = RegExp(
-    r'https?://open\.spotify\.com/track/[a-zA-Z0-9]+',
+    r'(https?://open\.spotify\.com/(?:intl-[a-z]{2}/)?track/[a-zA-Z0-9]+|spotify:track:[a-zA-Z0-9]+)',
   );
   static final RegExp spotifyPlaylistRegex = RegExp(
-    r'https?://open\.spotify\.com/playlist/[a-zA-Z0-9]+',
+    r'(https?://open\.spotify\.com/(?:intl-[a-z]{2}/)?playlist/[a-zA-Z0-9]+|spotify:playlist:[a-zA-Z0-9]+)',
   );
   static final RegExp spotifyAlbumRegex = RegExp(
-    r'https?://open\.spotify\.com/album/[a-zA-Z0-9]+',
+    r'(https?://open\.spotify\.com/(?:intl-[a-z]{2}/)?album/[a-zA-Z0-9]+|spotify:album:[a-zA-Z0-9]+)',
   );
   static final RegExp spotifyAnyRegex = RegExp(
-    r'https?://open\.spotify\.com/(track|playlist|album)/[a-zA-Z0-9]+',
+    r'(https?://open\.spotify\.com/(?:intl-[a-z]{2}/)?(track|playlist|album)/[a-zA-Z0-9]+|spotify:(track|playlist|album):[a-zA-Z0-9]+)',
   );
 
   // Quality Options

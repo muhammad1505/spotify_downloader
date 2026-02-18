@@ -24,6 +24,7 @@ except Exception:
 _event_sink = None
 _cancel_flags: Dict[str, bool] = {}
 _ffmpeg_override: Optional[str] = None
+_SPOTIFY_URI_RE = re.compile(r'spotify:(track|playlist|album):([a-zA-Z0-9]+)')
 
 
 def set_event_sink(sink):
@@ -68,6 +69,7 @@ def _has_ffmpeg(ffmpeg_cmd: str) -> bool:
 
 def _fetch_oembed_title(url: str) -> Optional[str]:
     try:
+        url = _normalize_spotify_url(url)
         oembed_url = f"https://open.spotify.com/oembed?url={url}"
         with urllib.request.urlopen(oembed_url, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
@@ -81,6 +83,13 @@ def _fetch_oembed_title(url: str) -> Optional[str]:
 
 def _safe_filename(name: str) -> str:
     return re.sub(r"[\\/:*?\"<>|]", "_", name).strip() or "download"
+
+
+def _normalize_spotify_url(url: str) -> str:
+    match = _SPOTIFY_URI_RE.search(url)
+    if not match:
+        return url
+    return f"https://open.spotify.com/{match.group(1)}/{match.group(2)}"
 
 
 def _tag_mp3(path: str, title: str, artist: str, album: str, cover_path: Optional[str]):
@@ -178,6 +187,7 @@ def start_download(
         "message": "Resolving Spotify metadata...",
     })
 
+    url = _normalize_spotify_url(url)
     title_hint = _fetch_oembed_title(url)
     if title_hint:
         search_query = f"ytsearch1:{title_hint}"
