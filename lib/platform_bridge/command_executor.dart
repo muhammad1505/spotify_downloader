@@ -51,6 +51,66 @@ class AndroidTermuxExecutor implements CommandExecutor {
       stderr: (map['stderr'] as String?) ?? '',
     );
   }
+
+  Future<TermuxCommandHandle> startCommand(String command, {String? workingDir}) async {
+    final result = await _channel.invokeMethod<Map>('startCommand', {
+      'command': command,
+      'workDir': workingDir,
+    });
+    final map = result?.cast<String, dynamic>() ?? const {};
+    return TermuxCommandHandle(
+      id: (map['id'] as String?) ?? '',
+      stdoutPath: (map['stdoutPath'] as String?) ?? '',
+      stderrPath: (map['stderrPath'] as String?) ?? '',
+      exitPath: (map['exitPath'] as String?) ?? '',
+    );
+  }
+
+  Future<TermuxCommandStatus> checkCommand(String id) async {
+    final result = await _channel.invokeMethod<Map>('checkCommand', {
+      'id': id,
+    });
+    final map = result?.cast<String, dynamic>() ?? const {};
+    return TermuxCommandStatus(
+      done: map['done'] == true,
+      exitCode: (map['exitCode'] as num?)?.toInt(),
+      stdout: (map['stdout'] as String?) ?? '',
+      stderr: (map['stderr'] as String?) ?? '',
+    );
+  }
+
+  Future<bool> isTaskerInstalled() async {
+    final installed = await _channel.invokeMethod<bool>('isTermuxTaskerInstalled') ?? false;
+    return installed;
+  }
+}
+
+class TermuxCommandHandle {
+  final String id;
+  final String stdoutPath;
+  final String stderrPath;
+  final String exitPath;
+
+  const TermuxCommandHandle({
+    required this.id,
+    required this.stdoutPath,
+    required this.stderrPath,
+    required this.exitPath,
+  });
+}
+
+class TermuxCommandStatus {
+  final bool done;
+  final int? exitCode;
+  final String stdout;
+  final String stderr;
+
+  const TermuxCommandStatus({
+    required this.done,
+    required this.exitCode,
+    required this.stdout,
+    required this.stderr,
+  });
 }
 
 class WindowsShellExecutor implements CommandExecutor {

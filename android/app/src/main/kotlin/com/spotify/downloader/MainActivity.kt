@@ -36,6 +36,7 @@ class MainActivity : FlutterActivity() {
     private val runningTasks = mutableMapOf<String, QueueTask>()
     private var maxConcurrent = 1
     private var bundledFfmpegPath: String? = null
+    private val termuxCommands = mutableMapOf<String, TermuxCommandMeta>()
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 100
@@ -169,6 +170,25 @@ class MainActivity : FlutterActivity() {
                 "isTermuxInstalled" -> {
                     result.success(isPackageInstalled("com.termux"))
                 }
+                "isTermuxTaskerInstalled" -> {
+                    result.success(isPackageInstalled("com.termux.tasker"))
+                }
+                "startCommand" -> {
+                    val command = call.argument<String>("command") ?: ""
+                    val workDir = call.argument<String>("workDir")
+                    val meta = startTermuxCommand(command, workDir)
+                    result.success(mapOf(
+                        "id" to meta.id,
+                        "stdoutPath" to meta.stdoutPath,
+                        "stderrPath" to meta.stderrPath,
+                        "exitPath" to meta.exitPath,
+                    ))
+                }
+                "checkCommand" -> {
+                    val id = call.argument<String>("id") ?: ""
+                    val status = checkTermuxCommand(id)
+                    result.success(status)
+                }
                 "runCommand" -> {
                     val command = call.argument<String>("command") ?: ""
                     val workDir = call.argument<String>("workDir")
@@ -181,6 +201,13 @@ class MainActivity : FlutterActivity() {
             }
         }
     }
+
+    data class TermuxCommandMeta(
+        val id: String,
+        val stdoutPath: String,
+        val stderrPath: String,
+        val exitPath: String,
+    )
 
     private fun isPackageInstalled(pkg: String): Boolean {
         return try {
@@ -207,11 +234,10 @@ class MainActivity : FlutterActivity() {
             )
         }
 
-        val baseDir = File(Environment.getExternalStorageDirectory(), "SpotifyDownloader/termux")
-        baseDir.mkdirs()
-        val stdoutFile = File(baseDir, "stdout_${System.currentTimeMillis()}.log")
-        val stderrFile = File(baseDir, "stderr_${System.currentTimeMillis()}.log")
-        val exitFile = File(baseDir, "exit_${System.currentTimeMillis()}.code")
+        val meta = createTermuxCommandMeta()
+        val stdoutFile = File(meta.stdoutPath)
+        val stderrFile = File(meta.stderrPath)
+        val exitFile = File(meta.exitPath)
 
         val intent = Intent("com.termux.tasker.RUN_COMMAND").apply {
             putExtra("com.termux.tasker.extra.COMMAND", "sh")
@@ -249,6 +275,64 @@ class MainActivity : FlutterActivity() {
             "exitCode" to exitCode,
             "stdout" to stdout,
             "stderr" to stderr,
+        )
+    }
+
+    private fun startTermuxCommand(command: String, workDir: String?): TermuxCommandMeta {
+        val meta = createTermuxCommandMeta()
+        val stdoutFile = File(meta.stdoutPath)
+        val stderrFile = File(meta.stderrPath)
+        val exitFile = File(meta.exitPath)
+
+        val intent = Intent("com.termux.tasker.RUN_COMMAND").apply {
+            putExtra("com.termux.tasker.extra.COMMAND", "sh")
+            putExtra("com.termux.tasker.extra.ARGUMENTS", arrayOf("-lc", "$command; echo \\$? > ${exitFile.absolutePath}"))
+            if (!workDir.isNullOrBlank()) {
+                putExtra("com.termux.tasker.extra.WORKDIR", workDir)
+            }
+            putExtra("com.termux.tasker.extra.STDOUT", stdoutFile.absolutePath)
+            putExtra("com.termux.tasker.extra.STDERR", stderrFile.absolutePath)
+            putExtra("com.termux.tasker.extra.BACKGROUND", true)
+        }
+        sendBroadcast(intent)
+
+        termuxCommands[meta.id] = meta
+        return meta
+    }
+
+    private fun checkTermuxCommand(id: String): Map<String, Any?> {
+        val meta = termuxCommands[id] ?: return mapOf("done" to true, "exitCode" to 1)
+        val exitFile = File(meta.exitPath)
+        if (!exitFile.exists()) {
+            return mapOf("done" to false)
+        }
+        val exitCode = try {
+            exitFile.readText().trim().toInt()
+        } catch (_: Exception) {
+            1
+        }
+        val stdout = File(meta.stdoutPath).takeIf { it.exists() }?.readText() ?: ""
+        val stderr = File(meta.stderrPath).takeIf { it.exists() }?.readText() ?: ""
+        return mapOf(
+            "done" to true,
+            "exitCode" to exitCode,
+            "stdout" to stdout,
+            "stderr" to stderr,
+        )
+    }
+
+    private fun createTermuxCommandMeta(): TermuxCommandMeta {
+        val baseDir = File(Environment.getExternalStorageDirectory(), "SpotifyDownloader/termux")
+        baseDir.mkdirs()
+        val id = UUID.randomUUID().toString()
+        val stdoutFile = File(baseDir, "stdout_${id}.log")
+        val stderrFile = File(baseDir, "stderr_${id}.log")
+        val exitFile = File(baseDir, "exit_${id}.code")
+        return TermuxCommandMeta(
+            id = id,
+            stdoutPath = stdoutFile.absolutePath,
+            stderrPath = stderrFile.absolutePath,
+            exitPath = exitFile.absolutePath,
         )
     }
 

@@ -61,27 +61,12 @@ class QueueEngine {
       'progress': 5,
       'message': 'Starting...'
     });
-    var progress = 5;
-    final ticker = Stream.periodic(const Duration(seconds: 2));
-    final sub = ticker.listen((_) {
-      progress = (progress + 5).clamp(5, 90);
-      _events.add({
-        'id': request.id,
-        'status': 'downloading',
-        'progress': progress,
-        'message': 'Downloading...'
-      });
-    });
-
-    final result = await backend.runDownload(request);
-    await sub.cancel();
-
-    final parsedMessage = _parseSpotdlOutput(result.stdout, result.message);
+    final outcome = await _runWithStreaming(request);
     _events.add({
       'id': request.id,
-      'status': result.success ? 'completed' : 'error',
-      'progress': result.success ? 100 : 0,
-      'message': parsedMessage,
+      'status': outcome.success ? 'completed' : 'error',
+      'progress': outcome.success ? 100 : 0,
+      'message': outcome.message,
     });
     _running = (_running - 1).clamp(0, 9999);
     _process();
@@ -97,6 +82,40 @@ class QueueEngine {
     _events.close();
   }
 
+  Future<_RunOutcome> _runWithStreaming(DownloadRequest request) async {
+    if (backend is! TermuxDownloadBackend) {
+      final result = await backend.runDownload(request);
+      final msg = _parseSpotdlOutput(result.stdout, result.message);
+      return _RunOutcome(success: result.success, message: msg);
+    }
+
+    final termuxBackend = backend as TermuxDownloadBackend;
+    final handle = await termuxBackend.startDownload(request);
+    var lastStdout = '';
+    var lastStderr = '';
+    while (true) {
+      final status = await termuxBackend.checkDownload(handle.id);
+      if (status.stdout.isNotEmpty) lastStdout = status.stdout;
+      if (status.stderr.isNotEmpty) lastStderr = status.stderr;
+      final pct = _extractMaxPercent(lastStdout);
+      if (pct > 0 && pct < 100) {
+        _events.add({
+          'id': request.id,
+          'status': 'downloading',
+          'progress': pct,
+          'message': 'Downloading... $pct%',
+        });
+      }
+      if (status.done) {
+        final success = (status.exitCode ?? 1) == 0;
+        final msg = success ? 'Download completed' : (lastStderr.trim().isNotEmpty ? lastStderr : lastStdout);
+        final parsed = _parseSpotdlOutput(lastStdout, msg.isEmpty ? 'Download failed' : msg);
+        return _RunOutcome(success: success, message: parsed);
+      }
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+  }
+
   String _parseSpotdlOutput(String stdout, String fallback) {
     final percentMatches = RegExp(r'(\\d{1,3})%').allMatches(stdout);
     int maxPct = 0;
@@ -109,4 +128,21 @@ class QueueEngine {
     }
     return fallback;
   }
+
+  int _extractMaxPercent(String text) {
+    final percentMatches = RegExp(r'(\\d{1,3})%').allMatches(text);
+    int maxPct = 0;
+    for (final m in percentMatches) {
+      final val = int.tryParse(m.group(1) ?? '') ?? 0;
+      if (val > maxPct && val <= 100) maxPct = val;
+    }
+    return maxPct;
+  }
+}
+
+class _RunOutcome {
+  final bool success;
+  final String message;
+
+  const _RunOutcome({required this.success, required this.message});
 }

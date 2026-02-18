@@ -86,6 +86,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _oneClickSetup() async {
+    final env = context.read<EnvironmentService>();
+    final res = await env.oneClickSetup();
+    if (!mounted) return;
+    final message = res.isSuccess ? 'Setup complete' : 'Setup failed: ${res.stderr}';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -255,6 +265,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icons.download_for_offline_rounded,
             'Install python3-pip, ffmpeg, spotdl inside proot',
             onTap: _installSpotdlWithFfmpeg,
+          ),
+          _buildTile(
+            'One-click setup (Android)',
+            Icons.auto_fix_high_rounded,
+            'Install proot, distro, spotdl, ffmpeg',
+            onTap: _oneClickSetup,
           ),
           const SizedBox(height: 16),
 

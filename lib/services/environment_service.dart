@@ -14,6 +14,12 @@ class EnvironmentService {
     return result.isSuccess && result.stdout.trim() == 'true';
   }
 
+  Future<bool> isTermuxTaskerInstalled() async {
+    if (!Platform.isAndroid) return false;
+    if (executor is! AndroidTermuxExecutor) return false;
+    return (executor as AndroidTermuxExecutor).isTaskerInstalled();
+  }
+
   Future<bool> isSpotdlAvailable() async {
     if (Platform.isAndroid) {
       final distro = await resolveDistro();
@@ -78,5 +84,25 @@ class EnvironmentService {
       'proot-distro login $distro -- python3 -m pip install spotdl',
     ].join(' && ');
     return executor.execute(cmd);
+  }
+
+  Future<CommandResult> oneClickSetup() async {
+    if (!Platform.isAndroid) {
+      return CommandResult(exitCode: 1, stdout: '', stderr: 'Not Android');
+    }
+    final termuxOk = await isTermuxInstalled();
+    if (!termuxOk) {
+      return CommandResult(exitCode: 1, stdout: '', stderr: 'Install Termux first');
+    }
+    final taskerOk = await isTermuxTaskerInstalled();
+    if (!taskerOk) {
+      return CommandResult(exitCode: 1, stdout: '', stderr: 'Install Termux:Tasker first');
+    }
+    final proot = await installProotDistro();
+    if (!proot.isSuccess) return proot;
+    final distro = await resolveDistro();
+    final distroRes = await installDistro(distro);
+    if (!distroRes.isSuccess) return distroRes;
+    return installSpotdlWithFfmpeg();
   }
 }
