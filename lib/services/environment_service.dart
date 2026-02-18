@@ -86,36 +86,54 @@ class EnvironmentService {
     return executor.execute(cmd);
   }
 
-  Future<CommandResult> oneClickSetup() async {
+  Future<CommandResult> oneClickSetup({void Function(String msg)? onLog}) async {
     if (!Platform.isAndroid) {
       return CommandResult(exitCode: 1, stdout: '', stderr: 'Not Android');
     }
+    onLog?.call('Checking Termux...');
     final termuxOk = await isTermuxInstalled();
     if (!termuxOk) {
+      onLog?.call('Termux missing');
       return CommandResult(exitCode: 1, stdout: '', stderr: 'Install Termux first');
     }
+    onLog?.call('Checking Termux:Tasker...');
     final taskerOk = await isTermuxTaskerInstalled();
     if (!taskerOk) {
+      onLog?.call('Termux:Tasker missing');
       return CommandResult(exitCode: 1, stdout: '', stderr: 'Install Termux:Tasker first');
     }
+    onLog?.call('Checking proot-distro...');
     final prootOk = await isProotDistroAvailable();
     if (!prootOk) {
+      onLog?.call('Installing proot-distro...');
       final proot = await installProotDistro();
       if (!proot.isSuccess) return proot;
+      onLog?.call('proot-distro installed');
+    } else {
+      onLog?.call('proot-distro already installed');
     }
 
+    onLog?.call('Resolving distro...');
     final distro = await resolveDistro();
+    onLog?.call('Checking distro: $distro');
     final distroInstalled = await hasDistro(distro);
     if (!distroInstalled) {
+      onLog?.call('Installing distro: $distro');
       final distroRes = await installDistro(distro);
       if (!distroRes.isSuccess) return distroRes;
+      onLog?.call('Distro installed: $distro');
+    } else {
+      onLog?.call('Distro already installed: $distro');
     }
 
+    onLog?.call('Checking spotdl in proot...');
     final spotdlOk = await isSpotdlAvailable();
     if (!spotdlOk) {
+      onLog?.call('Installing spotdl + ffmpeg in proot...');
       return installSpotdlWithFfmpeg();
     }
 
+    onLog?.call('Environment already configured');
     return CommandResult(exitCode: 0, stdout: 'Already configured', stderr: '');
   }
 }

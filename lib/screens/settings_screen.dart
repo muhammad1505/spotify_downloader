@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../managers/queue_manager.dart';
 import '../services/environment_service.dart';
 import '../core/theme.dart';
 import '../core/constants.dart';
@@ -104,8 +105,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _oneClickSetup() async {
     final env = context.read<EnvironmentService>();
+    final logger = context.read<QueueManager>();
     setState(() => _checkingEnv = true);
-    final res = await env.oneClickSetup();
+    logger.appendExternalLog('Setup: starting environment configuration');
+    final res = await env.oneClickSetup(
+      onLog: (msg) => logger.appendExternalLog('Setup: $msg'),
+    );
     setState(() => _checkingEnv = false);
     if (!mounted) return;
     final message = res.isSuccess
