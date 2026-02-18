@@ -88,6 +88,10 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun hasTermuxBridge(): Boolean {
+        return isPackageInstalled("com.termux") && isPackageInstalled("com.termux.tasker")
+    }
+
     private suspend fun runTermuxCommand(command: String, workDir: String?): Map<String, Any> {
         if (!isPackageInstalled("com.termux")) {
             return mapOf(
@@ -110,6 +114,7 @@ class MainActivity : FlutterActivity() {
         val exitFile = File(meta.exitPath)
 
         val intent = Intent("com.termux.tasker.RUN_COMMAND").apply {
+            `package` = "com.termux.tasker"
             putExtra("com.termux.tasker.extra.COMMAND", "sh")
             putExtra("com.termux.tasker.extra.ARGUMENTS", arrayOf("-lc", "$command; echo \\$? > ${exitFile.absolutePath}"))
             if (!workDir.isNullOrBlank()) {
@@ -157,6 +162,7 @@ class MainActivity : FlutterActivity() {
         val exitFile = File(meta.exitPath)
 
         val intent = Intent("com.termux.tasker.RUN_COMMAND").apply {
+            `package` = "com.termux.tasker"
             putExtra("com.termux.tasker.extra.COMMAND", "sh")
             putExtra("com.termux.tasker.extra.ARGUMENTS", arrayOf("-lc", "$command; echo \\$? > ${exitFile.absolutePath}"))
             if (!workDir.isNullOrBlank()) {
