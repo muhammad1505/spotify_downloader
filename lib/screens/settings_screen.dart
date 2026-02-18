@@ -46,6 +46,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _checkProot() async {
+    final env = context.read<EnvironmentService>();
+    final ok = await env.isProotDistroAvailable();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'proot-distro ready' : 'proot-distro not found')),
+    );
+  }
+
+  Future<void> _installProot() async {
+    final env = context.read<EnvironmentService>();
+    final res = await env.installProotDistro();
+    if (!mounted) return;
+    final message = res.isSuccess ? 'proot-distro installed' : 'Install failed: ${res.stderr}';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _installDistro() async {
+    final env = context.read<EnvironmentService>();
+    const distro = 'ubuntu';
+    final res = await env.installDistro(distro);
+    if (!mounted) return;
+    final message = res.isSuccess ? 'Distro $distro installed' : 'Install failed: ${res.stderr}';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -189,8 +219,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildTile(
             'Install spotdl',
             Icons.download_rounded,
-            'Run pip install spotdl',
+            'Run pip install spotdl (proot)',
             onTap: _installSpotdl,
+          ),
+          _buildTile(
+            'Check proot-distro',
+            Icons.terminal,
+            'Verify proot-distro availability',
+            onTap: _checkProot,
+          ),
+          _buildTile(
+            'Install proot-distro',
+            Icons.download_rounded,
+            'pkg install -y proot-distro',
+            onTap: _installProot,
+          ),
+          _buildTile(
+            'Install Ubuntu (proot)',
+            Icons.cloud_download_rounded,
+            'proot-distro install ubuntu',
+            onTap: _installDistro,
           ),
           const SizedBox(height: 16),
 
