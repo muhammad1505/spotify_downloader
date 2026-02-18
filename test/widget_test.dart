@@ -63,6 +63,9 @@ class FakeQueueManager extends ChangeNotifier implements QueueManager {
 
   @override
   void cancelAll() {}
+
+  @override
+  void appendExternalLog(String text) {}
 }
 
 void main() {

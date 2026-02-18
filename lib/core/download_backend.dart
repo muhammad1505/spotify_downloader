@@ -67,4 +67,18 @@ class TermuxDownloadBackend implements DownloadBackend {
       stderr: res.stderr,
     );
   }
+
+  Future<TermuxCommandHandle> startDownload(DownloadRequest request) async {
+    final distro = await resolveDistro();
+    final outputArg = request.outputDir.replaceAll('"', '\\"');
+    final cmd =
+        'proot-distro login $distro -- spotdl "${request.url}" --output "$outputArg"';
+    final termux = executor as AndroidTermuxExecutor;
+    return termux.startCommand(cmd);
+  }
+
+  Future<TermuxCommandStatus> checkDownload(String id) async {
+    final termux = executor as AndroidTermuxExecutor;
+    return termux.checkCommand(id);
+  }
 }
