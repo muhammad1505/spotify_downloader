@@ -194,7 +194,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun createTermuxCommandMeta(): TermuxCommandMeta {
-        val baseDir = File(Environment.getExternalStorageDirectory(), "SpotifyDownloader/termux")
+        val baseDir = File(Environment.getExternalStorageDirectory(), "Download/SpotifyDownloader/termux")
         baseDir.mkdirs()
         val id = UUID.randomUUID().toString()
         val stdoutFile = File(baseDir, "stdout_${id}.log")
