@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme.dart';
+import 'core/queue_engine.dart';
+import 'core/download_backend.dart';
+import 'platform_bridge/command_executor.dart';
+import 'services/environment_service.dart';
 import 'services/download_service.dart';
 import 'services/storage_service.dart';
 import 'services/settings_service.dart';
-import 'services/python_service.dart';
 import 'services/audio_service.dart';
 import 'managers/queue_manager.dart';
 import 'managers/analytics_manager.dart';
@@ -32,9 +35,13 @@ void main() async {
   await settingsService.init();
 
   final storageService = StorageService();
-  final pythonService = PythonService();
   final audioService = AudioService();
   await audioService.init();
+
+  final executor = resolveExecutor();
+  final envService = EnvironmentService(executor: executor);
+  final backend = TermuxDownloadBackend(executor: executor);
+  final queueEngine = QueueEngine(backend: backend);
 
   runApp(
     MultiProvider(
@@ -44,7 +51,7 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => QueueManager(
-            pythonService: pythonService,
+            queueEngine: queueEngine,
             settingsService: settingsService,
             storageService: storageService,
           ),
@@ -53,6 +60,7 @@ void main() async {
           create: (_) => AnalyticsManager(storageService: storageService),
         ),
         Provider<AudioService>.value(value: audioService),
+        Provider<EnvironmentService>.value(value: envService),
       ],
       child: SpotifyDownloaderApp(settingsService: settingsService),
     ),
@@ -138,28 +146,23 @@ class _MainShellState extends State<MainShell> {
           },
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Home',
+              icon: Icon(Icons.download_rounded),
+              label: 'Download',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.library_music_rounded),
-              activeIcon: Icon(Icons.library_music_rounded),
               label: 'Library',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_rounded),
-              activeIcon: Icon(Icons.analytics_rounded),
+              icon: Icon(Icons.bar_chart_rounded),
               label: 'Analytics',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_rounded),
-              activeIcon: Icon(Icons.settings_rounded),
               label: 'Settings',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.info_outline_rounded),
-              activeIcon: Icon(Icons.info_rounded),
               label: 'About',
             ),
           ],

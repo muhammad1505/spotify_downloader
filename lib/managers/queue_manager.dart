@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/download_task.dart';
-import '../services/python_service.dart';
 import '../services/settings_service.dart';
 import '../services/storage_service.dart';
 import '../models/download_item.dart';
 import '../core/constants.dart';
+import '../core/queue_engine.dart';
 import 'package:path_provider/path_provider.dart';
 
 class QueueManager extends ChangeNotifier {
-  final PythonService _pythonService;
+  final QueueEngine _queueEngine;
   final SettingsService _settingsService;
   final StorageService _storageService;
 
@@ -18,13 +18,13 @@ class QueueManager extends ChangeNotifier {
   StreamSubscription? _progressSub;
 
   QueueManager({
-    required PythonService pythonService,
+    required QueueEngine queueEngine,
     required SettingsService settingsService,
     required StorageService storageService,
-  })  : _pythonService = pythonService,
+  })  : _queueEngine = queueEngine,
         _settingsService = settingsService,
         _storageService = storageService {
-    _progressSub = _pythonService.progressStream.listen(
+    _progressSub = _queueEngine.events.listen(
       _handleProgress,
       onError: (Object error) {
         _appendLog('Stream error: $error');
@@ -42,7 +42,7 @@ class QueueManager extends ChangeNotifier {
     bool normalize = false,
   }) async {
     final outputDir = await _getOutputDirectory();
-    final taskId = await _pythonService.addToQueue(
+    final taskId = await _queueEngine.enqueue(
       url: url,
       outputDir: outputDir,
       quality: quality,
@@ -68,26 +68,22 @@ class QueueManager extends ChangeNotifier {
   }
 
   void pauseTask(String id) {
-    _pythonService.pauseTask(id);
-    _appendLog('Queue: pause task $id');
-    _updateTask(id, status: DownloadTaskStatus.paused, message: 'Paused');
+    _appendLog('Queue: pause task $id (unsupported)');
+    _updateTask(id, status: DownloadTaskStatus.paused, message: 'Paused (unsupported)');
   }
 
   void resumeTask(String id) {
-    _pythonService.resumeTask(id);
-    _appendLog('Queue: resume task $id');
+    _appendLog('Queue: resume task $id (unsupported)');
     _updateTask(id, status: DownloadTaskStatus.queued, message: 'Queued');
   }
 
   void cancelTask(String id) {
-    _pythonService.cancelTask(id);
-    _appendLog('Queue: cancel task $id');
+    _appendLog('Queue: cancel task $id (unsupported)');
     _updateTask(id, status: DownloadTaskStatus.cancelled, message: 'Cancelled');
   }
 
   void cancelAll() {
-    _pythonService.cancelAll();
-    _appendLog('Queue: cancel all');
+    _appendLog('Queue: cancel all (unsupported)');
     for (final task in _tasks) {
       _updateTask(task.id, status: DownloadTaskStatus.cancelled, message: 'Cancelled');
     }
@@ -126,6 +122,9 @@ class QueueManager extends ChangeNotifier {
         break;
       case 'cancelled':
         nextStatus = DownloadTaskStatus.cancelled;
+        break;
+      case 'queued':
+        nextStatus = DownloadTaskStatus.queued;
         break;
       default:
         nextStatus = DownloadTaskStatus.downloading;

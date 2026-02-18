@@ -38,3 +38,8 @@
 ## Configuration Notes
 - Requires Flutter 3.4+, Android SDK 24+, and Java 17.
 - Python dependencies are bundled via Chaquopy; update `android/app/src/main/python/` carefully and validate on device.
+
+## Direction Update (2026-02-18)
+- Target: Cross-Platform CLI Media Manager (Flutter UI + spotdl CLI).
+- Phase 1 focus: Android only, Termux adapter.
+- Desktop adapters (Windows/Linux/macOS) are placeholders until Phase 2.

@@ -1,56 +1,43 @@
-# 🎧 Spotify Downloader (Android)
+# 🎧 Cross-Platform CLI Media Manager
 
-Full offline Spotify downloader for Android with multi‑queue, analytics, and in‑app preview. Built with **Flutter**, **Kotlin**, and **Python (Chaquopy)** using **yt‑dlp**, **ffmpeg**, and **mutagen**.
+Flutter UI + platform adapters + CLI engines. Current phase: **Android first**.
 
-## ✨ Features
+## ✨ Goals (Target)
 
-- 📥 Download Spotify tracks/playlists (via yt‑dlp search)
-- 🧵 Multi download queue (pause/resume/cancel)
-- 🎛️ Quality selection (128/192/320 kbps)
-- 🧠 Metadata tagging + album art (mutagen)
-- 🎶 Built‑in preview player (just_audio)
-- 📊 Analytics dashboard (sqflite + fl_chart)
-- 🔔 Foreground service notifications
-- 🌙 Premium dark UI with Spotify theme
+- 📥 CLI download engine (spotdl)
+- 🧵 Multi queue: FIFO + priority + persistence
+- 🎛️ Quality selection
+- 🎶 Built‑in player (just_audio)
+- 📊 Analytics dashboard + CSV export
+- 🔔 Foreground/background where supported
 
-## 🧱 Architecture
+## 🧱 Architecture (Planned)
 
 ```
 Flutter UI
    ↓
-Queue Manager (Flutter)
+Queue Engine (core)
    ↓
-MethodChannel
+Platform Adapter
    ↓
-Kotlin Bridge + Foreground Service
+Native OS Runtime
    ↓
-Chaquopy (Python 3.10)
-   ↓
-yt-dlp → ffmpeg → mutagen → MP3
+spotdl CLI
 ```
 
-## 📁 Project Structure
+## 📁 Project Structure (New)
 
 ```
 lib/
-├── core/            # Theme, constants
-├── managers/        # Queue + analytics
-├── models/          # DownloadItem, DownloadOptions, DownloadTask
-├── screens/         # Home, Library, Analytics, Settings, About
-├── services/        # PythonService, AudioService, StorageService
-├── widgets/         # UI components
-└── main.dart        # App entry point
-
-android/
-├── app/src/main/
-│   ├── kotlin/      # MainActivity, Foreground service
-│   └── python/      # downloader.py, bridge module
-
-backend/python/
-└── downloader.py    # Reference engine (same logic as Android)
+├── core/            # QueueEngine, AnalyticsEngine, PlayerEngine
+├── adapters/        # Platform adapters
+├── platform_bridge/ # CommandExecutor interface
+├── backend/         # Shared daemon (future)
+├── screens/         # UI
+└── services/        # App services
 ```
 
-## 🚀 Build & Run
+## 🚀 Build & Run (Phase 1)
 
 ```bash
 flutter pub get
@@ -62,12 +49,12 @@ Release build:
 flutter build apk --release --target-platform=android-arm64,android-x64
 ```
 
-## ⚙️ Requirements
+## ⚙️ Requirements (Phase 1)
 
 - Flutter 3.4+
 - Android SDK 24+
 - Java 17
-- Python 3.10 (embedded via Chaquopy)
+- Termux + Termux:Tasker + spotdl installed by user
 
 ## 🔄 CI/CD
 
@@ -81,9 +68,8 @@ git push origin v1.0.0
 
 ## 📝 Notes
 
-- ffmpeg is bundled per-ABI in `android/app/src/main/jniLibs` and executed from Android `nativeLibraryDir`.
-- mutagen is bundled through Chaquopy pip requirements (`android/app/build.gradle.kts`).
-- Spotdl is not used on Android because of native dependency conflicts.
+- Phase 1 is Android-only. Desktop adapters are placeholders.
+- Termux is required on Android for spotdl execution.
 
 ## 📜 License
 

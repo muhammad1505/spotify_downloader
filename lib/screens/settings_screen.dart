@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../services/environment_service.dart';
 import '../core/theme.dart';
 import '../core/constants.dart';
 import '../services/settings_service.dart';
@@ -15,6 +17,34 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   SettingsService get _s => widget.settingsService;
+
+  Future<void> _checkTermux() async {
+    final env = context.read<EnvironmentService>();
+    final ok = await env.isTermuxInstalled();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'Termux detected' : 'Termux not installed')),
+    );
+  }
+
+  Future<void> _checkSpotdl() async {
+    final env = context.read<EnvironmentService>();
+    final ok = await env.isSpotdlAvailable();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'spotdl ready' : 'spotdl not found')),
+    );
+  }
+
+  Future<void> _installSpotdl() async {
+    final env = context.read<EnvironmentService>();
+    final res = await env.installSpotdl();
+    if (!mounted) return;
+    final message = res.isSuccess ? 'spotdl installed' : 'Install failed: ${res.stderr}';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +169,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               );
             },
+          ),
+          const SizedBox(height: 16),
+
+          // Environment
+          _buildSectionHeader('Environment'),
+          _buildTile(
+            'Check Termux',
+            Icons.terminal_rounded,
+            'Detect Termux installation',
+            onTap: _checkTermux,
+          ),
+          _buildTile(
+            'Check spotdl',
+            Icons.search_rounded,
+            'Verify spotdl command availability',
+            onTap: _checkSpotdl,
+          ),
+          _buildTile(
+            'Install spotdl',
+            Icons.download_rounded,
+            'Run pip install spotdl',
+            onTap: _installSpotdl,
           ),
           const SizedBox(height: 16),
 

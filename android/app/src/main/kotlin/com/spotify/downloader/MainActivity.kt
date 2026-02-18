@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.chaquo.python.Python
@@ -15,6 +16,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.*
 import java.io.File
+import java.util.concurrent.TimeUnit
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.UUID
@@ -25,6 +27,7 @@ class MainActivity : FlutterActivity() {
 
     private val METHOD_CHANNEL = "com.spotify.downloader/bridge"
     private val EVENT_CHANNEL = "com.spotify.downloader/progress"
+    private val TERMUX_CHANNEL = "com.spotify.downloader/termux"
 
     private var downloadJob: Job? = null
     private var eventSink: EventChannel.EventSink? = null
@@ -158,6 +161,94 @@ class MainActivity : FlutterActivity() {
                     PythonEmitter.sink = null
                 }
             }
+        )
+
+        // Termux bridge channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TERMUX_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isTermuxInstalled" -> {
+                    result.success(isPackageInstalled("com.termux"))
+                }
+                "runCommand" -> {
+                    val command = call.argument<String>("command") ?: ""
+                    val workDir = call.argument<String>("workDir")
+                    coroutineScope.launch {
+                        val payload = runTermuxCommand(command, workDir)
+                        withContext(Dispatchers.Main) { result.success(payload) }
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    private fun isPackageInstalled(pkg: String): Boolean {
+        return try {
+            packageManager.getPackageInfo(pkg, 0)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    private suspend fun runTermuxCommand(command: String, workDir: String?): Map<String, Any> {
+        if (!isPackageInstalled("com.termux")) {
+            return mapOf(
+                "exitCode" to 127,
+                "stdout" to "",
+                "stderr" to "Termux not installed",
+            )
+        }
+        if (!isPackageInstalled("com.termux.tasker")) {
+            return mapOf(
+                "exitCode" to 127,
+                "stdout" to "",
+                "stderr" to "Termux:Tasker not installed",
+            )
+        }
+
+        val baseDir = File(Environment.getExternalStorageDirectory(), "SpotifyDownloader/termux")
+        baseDir.mkdirs()
+        val stdoutFile = File(baseDir, "stdout_${System.currentTimeMillis()}.log")
+        val stderrFile = File(baseDir, "stderr_${System.currentTimeMillis()}.log")
+        val exitFile = File(baseDir, "exit_${System.currentTimeMillis()}.code")
+
+        val intent = Intent("com.termux.tasker.RUN_COMMAND").apply {
+            putExtra("com.termux.tasker.extra.COMMAND", "sh")
+            putExtra("com.termux.tasker.extra.ARGUMENTS", arrayOf("-lc", "$command; echo \\$? > ${exitFile.absolutePath}"))
+            if (!workDir.isNullOrBlank()) {
+                putExtra("com.termux.tasker.extra.WORKDIR", workDir)
+            }
+            putExtra("com.termux.tasker.extra.STDOUT", stdoutFile.absolutePath)
+            putExtra("com.termux.tasker.extra.STDERR", stderrFile.absolutePath)
+            putExtra("com.termux.tasker.extra.BACKGROUND", true)
+        }
+        sendBroadcast(intent)
+
+        val timeoutMs = TimeUnit.MINUTES.toMillis(10)
+        val start = System.currentTimeMillis()
+        while (!exitFile.exists()) {
+            if (System.currentTimeMillis() - start > timeoutMs) {
+                return mapOf(
+                    "exitCode" to 124,
+                    "stdout" to "",
+                    "stderr" to "Command timeout",
+                )
+            }
+            delay(300)
+        }
+
+        val exitCode = try {
+            exitFile.readText().trim().toInt()
+        } catch (_: Exception) {
+            1
+        }
+        val stdout = if (stdoutFile.exists()) stdoutFile.readText() else ""
+        val stderr = if (stderrFile.exists()) stderrFile.readText() else ""
+        return mapOf(
+            "exitCode" to exitCode,
+            "stdout" to stdout,
+            "stderr" to stderr,
         )
     }
 
