@@ -121,14 +121,16 @@ class MainActivity : FlutterActivity() {
         }
         sendBroadcast(intent)
 
-        val timeoutMs = TimeUnit.SECONDS.toMillis(45)
+        val timeoutMs = TimeUnit.SECONDS.toMillis(30)
         val start = System.currentTimeMillis()
         while (!exitFile.exists()) {
             if (System.currentTimeMillis() - start > timeoutMs) {
                 return mapOf(
                     "exitCode" to 124,
                     "stdout" to "",
-                    "stderr" to "Command timeout. Check Termux storage permission and enable 'Allow external apps' in Termux settings.",
+                    "stderr" to "Command timeout. Termux:Tasker did not create exit file. " +
+                        "Check: Allow external apps in Termux, run termux-setup-storage, open Termux:Tasker once. " +
+                        "Paths: stdout=${stdoutFile.absolutePath}, stderr=${stderrFile.absolutePath}, exit=${exitFile.absolutePath}",
                 )
             }
             delay(300)
