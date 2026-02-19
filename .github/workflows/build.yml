@@ -93,12 +93,15 @@ jobs:
       - name: Build Linux release
         run: flutter build linux --release
 
-      - name: Upload Linux Artifacts
+      - name: Package Linux release
+        run: |
+          tar -C build/linux/x64/release -czf linux-release-bundle.tar.gz bundle
+
+      - name: Upload Linux Artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-release-bundle
-          path: |
-            build/linux/x64/release/bundle
+          path: linux-release-bundle.tar.gz
 
   release:
     name: Create GitHub Release
@@ -130,7 +133,7 @@ jobs:
         with:
           files: |
             apks/app-release.apk
-            linux/**
+            linux/linux-release-bundle.tar.gz
           generate_release_notes: true
           draft: false
           prerelease: false
